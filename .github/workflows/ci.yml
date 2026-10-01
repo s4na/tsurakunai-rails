@@ -29,6 +29,7 @@ jobs:
       BUNDLE_IGNORE_CONFIG: '1'
       BUNDLE_FROZEN: 'false'
       ACTIONVIEW_VERSION: ${{ matrix.rubocop == 'latest' && '>= 7.1' || '~> 7.1.0' }}
+      SQLITE_VERSION: ${{ matrix.rubocop == 'latest' && '~> 2.0' || '~> 1.4' }}
       RUBOCOP_VERSION: ${{ matrix.rubocop == 'latest' && '>= 1.72.1' || '= 1.72.1' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.1

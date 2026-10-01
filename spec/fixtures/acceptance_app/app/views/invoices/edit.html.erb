@@ -1,0 +1,3 @@
+<p class="error"><%= @invoice.errors.full_messages.join(", ") %></p>
+<input name="invoice[memo]" value="<%= @invoice.memo %>">
+<input name="invoice[amount_cents]" value="<%= @invoice.amount_cents %>">

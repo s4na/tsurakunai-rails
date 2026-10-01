@@ -81,10 +81,11 @@ module Tsurakunai
       def check_views
         unless File.file?(".erb_lint.yml")
           $stderr.puts "View lint requires .erb_lint.yml; run install-view-lint or merge the profile into your configuration."
+          puts "View lint: FAIL (missing configuration)"
           return false
         end
 
-        ok = system("bundle", "exec", "erb_lint", "--lint-all")
+        ok = run_check_command("View lint", "bundle", "exec", "erb_lint", "--lint-all")
         $stderr.puts "View lint failed; inspect diagnostics and ensure erb_lint is in your bundle." unless ok
         ok
       end
@@ -95,11 +96,27 @@ module Tsurakunai
         raise ArgumentError, "Usage: tsurakunai-rails check [--views] -- TEST_COMMAND [ARGUMENTS...]" unless arguments.shift == "--" && !arguments.empty?
 
         # Run tests even when a linter fails. No shell interpolation of test arguments.
-        lint_ok = system("bundle", "exec", "rubocop", "--plugin", "rubocop-tsurakunai-rails")
+        lint_ok = run_check_command("Ruby lint", "bundle", "exec", "rubocop", "--plugin", "rubocop-tsurakunai-rails")
         views_ok = views ? check_views : true
-        test_ok = system([arguments.first, arguments.first], *arguments.drop(1))
+        puts "View lint: SKIPPED (use --views with an installed profile)" unless views
+        test_ok = run_check_command("Tests", [arguments.first, arguments.first], *arguments.drop(1))
         puts "Design review still required: invoke the tsurakunai-rails skill and record evidence."
         lint_ok && views_ok && test_ok ? 0 : 1
+      end
+
+      def run_check_command(label, *command)
+        success = system(*command)
+        detail = if success
+                   "PASS"
+                 elsif success.nil?
+                   "FAIL (could not start command)"
+                 elsif $?.signaled?
+                   "FAIL (signal #{$?.termsig})"
+                 else
+                   "FAIL (exit #{$?.exitstatus})"
+                 end
+        puts "#{label}: #{detail}"
+        success
       end
 
       def usage

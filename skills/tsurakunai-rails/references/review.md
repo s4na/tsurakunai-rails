@@ -50,6 +50,22 @@ update_columns(updated_at: Time.current)
 
 このdisable例はValidationBypassを明示採用した場合に限る。未採用なら例外コメントは不要。省略した監査・callback・楽観ロックに実際の影響があるか確認し、安全な保守処理を個別updateへ機械的に変えない。
 
+## lintを通過する失敗の追い方
+
+次はRailsのリクエスト・SQLite・描画で再現できる問題です。表の形に一致するだけで指摘せず、差分で変わる契約と実際の呼び出し元を確認します。アプリ全体の点検表ではありません。
+
+| 差分 | 調べる範囲と失敗の証拠 | 最小の修正候補・正当な対例 |
+| --- | --- | --- |
+| `current_account.invoices.find(id)`を`Invoice.find(id)`へ変更 | current accountの定義、認可policy、他accountのIDでのrequest。成功し、他accountの行が更新されれば漏えい・改ざん | 認可済みrelationから取得する。global find後に対象の認可を確実に行う実装ならglobal findだけで指摘しない |
+| permitに`account_id`や`owner_id`を追加 | 属性の意味、所有権移転の認可、request後のreload。同じ利用者が任意の所属へ移せれば認可の迂回 | 移転を許可しない通常更新ではpermitから外す。認可した移転専用操作は認める |
+| validation失敗後に`reload`・`find`・`new`してrender | 保存戻り値、表示に使うobject、実際のHTML。errorsや入力値が消えて再入力が必要になる | 保存に失敗したobjectをそのまま描画する。成功後のreloadや、意図的な入力破棄は欠陥ではない |
+| validationをcontrollerへ移す・modelから削る | その条件が全入口の不変条件か、job/console等の公開操作とDB制約。requestでは拒否するが直接保存は不正値を受け入れる | modelまたはDBで必要な条件を保つ。画面だけの確認欄をformへ移すのは正当 |
+| collectionや別actionがpartialを使う | `render`のcollection/as/localsとpartial内の変数。異なる2行を描画し、両方に同じ`@invoice`の値が出る | 対象recordのlocalを読む。単一actionの用意済みinstance variableはそのままでよい |
+
+指摘は例えば「他accountのinvoice IDを送ると200となりmemoが変更される。account内のinvoiceだけを更新する契約に反する。取得を`current_account.invoices.find`に戻し、他accountのIDでは404か403でDBが変わらないことを既存request testで確認する」のように書きます。単に「controllerが太い」「認可が見当たらない」では終えません。
+
+DB制約や既存の認可・テストが契約を保証している場合は、それを根拠に指摘を見送ります。再現できなければ、コードから確定する経路と未確認の前提を分けて報告します。スキル利用時に、このパッケージの検証アプリや全シナリオを導入先へコピーする必要はありません。
+
 ## 参照先
 
 仕様が必要なときは対象バージョンの公式資料を確認する。
