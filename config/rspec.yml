@@ -1,4 +1,4 @@
-# Opt-in: this changes only the RSpec department.
+# RSpec defaults, also retained as a compatible explicit preset.
 plugins:
   - rubocop-rspec
 
@@ -6,16 +6,23 @@ RSpec:
   Enabled: false
 RSpec/AnyInstance:
   Enabled: true
+  AutoCorrect: false
 RSpec/MessageChain:
   Enabled: true
+  AutoCorrect: false
 RSpec/SubjectStub:
   Enabled: true
+  AutoCorrect: false
 RSpec/VerifiedDoubles:
   Enabled: true
+  AutoCorrect: false
   IgnoreNameless: false
 RSpec/UnspecifiedException:
   Enabled: true
+  AutoCorrect: false
 RSpec/OverwritingSetup:
   Enabled: true
+  AutoCorrect: false
 RSpec/VoidExpect:
   Enabled: true
+  AutoCorrect: false

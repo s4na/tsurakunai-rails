@@ -13,7 +13,7 @@ bundle exec ruby script/acceptance.rb
 
 [検証アプリ](../spec/fixtures/acceptance_app)は本物のAction ControllerのRackリクエスト、Active Recordの保存・commit callback、Action ViewのERB描画を使います。認証済みaccountはテスト専用のRack環境から渡し、認証ライブラリや本番のログイン基盤を再実装しません。
 
-正常なアプリは6契約・40 assertionで、未認証拒否、tenantの境界、validation失敗、成功時の更新、requestなしのmodel操作、一覧の表示を検証します。通常の認証callback、短いCRUD、model validation、トップレベルviewのinstance variableを許容しています。標準8ルールを使用し、任意の設計方針は採用していません。書式はこの検証の対象から外しています。
+正常なアプリは6契約・40 assertionで、未認証拒否、tenantの境界、validation失敗、成功時の更新、requestなしのmodel操作、一覧の表示を検証します。通常の認証callback、短いCRUD、model validation、トップレベルviewのinstance variableを許容しています。設計方針と事故防止の標準16ルールを使用し、認証callbackは`AllowedMethods`で明示的に許可しています。書式はこの検証の対象から外しています。
 
 一度に1箇所を壊し、対応する契約テストが「エラーではなくassertion失敗」で検出すること、公開CLIが1を返すことを確認します。各ケース後に元へ戻します。
 
@@ -31,6 +31,8 @@ bundle exec ruby script/acceptance.rb
 CIではこの検証をテストとして実行します。さらに`script/package_smoke.rb`でも、ビルドしたGemを別のbundleへインストールして同じ検証を実行します。ソースだけ動き、配布物が使えない状態を防ぎます。Ruby 3.0・3.1とRuboCop下限ではRails 7.1／SQLite 1系、それ以外では各Rubyで解決できるRails／SQLite 2系を検証します。
 
 ## スキルの判断品質
+
+以下の判断評価は設計方針を標準ONにする前の、不具合検出に関する記録です。新しい日常設計方針の検出率を示すものではありません。
 
 上のうち静的検査が通るケースは、[スキルの具体例](../skills/tsurakunai-rails/references/review.md#lintを通過する失敗の追い方)で取得範囲・入力・保存結果・描画結果を追います。独立レビューでは、正解や期待する指摘数を渡さず、6つの回帰と3つの正常なコード例をスキルで判断しました。6つの具体的な問題を特定し、正常な認証callback、単一actionのpartialでのinstance variable、HTTPと無関係なmodelのparams属性には修正を要求しませんでした。この1回の評価で検出漏れ・不要な指摘はありませんでした。
 

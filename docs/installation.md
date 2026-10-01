@@ -43,7 +43,7 @@ bundle exec tsurakunai-rails check -- bin/rails test
 # RSpec
 bundle exec tsurakunai-rails check -- bundle exec rspec
 # RuboCopだけを実行する場合
-bundle exec rubocop --only TsurakunaiRails,Rails
+bundle exec rubocop --only TsurakunaiRails,Rails,RSpec
 ```
 
 `check`はこのpluginを明示的に読み込み、lintが失敗してもテストを実行します。両方成功なら0、どちらか失敗なら1、引数や導入先が不正なら2を返します。テストコマンドはシェル展開せず実行するため、パイプやリダイレクトは使えません。
@@ -54,31 +54,35 @@ Ruby lint・View lint・Testsごとの結果を表示します。`View lint: SKI
 
 CIには同じ `check -- <テストコマンド>` を置き、PRレビューにコードレビューの記録を残してください。AIのコードレビューをCIで自動実行したことにはしません。
 
-## 任意のルールセットを使う
+## 標準方針を調整する
 
-RSpecの追加検査を使う場合は、`.rubocop.yml`へ次を追加します。
+pluginを追加すると、設計方針8ルールと事故防止8ルール、RSpec7ルールが有効になります。以前のバージョンから更新すると新しい指摘が出るため、[更新時の確認](adoption.md)を先に読んでください。既存の`config/policies.yml`は互換用に残っていますが、指定は不要です。
 
-```yaml
-inherit_gem:
-  rubocop-tsurakunai-rails: config/rspec.yml
-```
-
-設計方針セットの全8ルールも採用する場合は、同じ配列へ追加します。必要なルールだけを個別に有効化しても構いません。
+合わないlintは`.rubocop.yml`で個別にOFFにできます。
 
 ```yaml
-inherit_gem:
-  rubocop-tsurakunai-rails:
-    - config/policies.yml
-    - config/rspec.yml
+TsurakunaiRails/ControllerCallbacks:
+  Enabled: false
 ```
 
-RSpec用の依存Gemも、このGemと一緒に導入されます。書式やDSLの好みに関するルールを一括で有効にはしません。追加したいルールは、導入先の`.rubocop.yml`で指定してください。
+スキルのPORO・純粋な計算・ViewComponent等も標準ONです。AIが読む設計方針は[AGENTS.md等への個別OFF](../skills/tsurakunai-rails/references/daily-design.md#方針を個別に外す)で調整します。RuboCopの設定とは別です。
 
-各ルールの対象・設定・例外は[ルールの詳細](rules.md)を参照してください。ERBの検査には[別の導入手順](view-inputs.md)があります。
+## RSpecとERB
+
+RSpec7ルールはplugin導入で有効になります。対象はRSpecのspecファイルで、RSpec本体をアプリへ追加したり、Minitestを置き換えたりはしません。`rubocop-rspec`は従来からこのGemの依存です。既存の`config/rspec.yml`読み込みも互換のため維持しますが、指定は不要です。
+
+```yaml
+RSpec/AnyInstance:
+  Enabled: false
+```
+
+ERBを使うアプリでは、[ERB用の標準設定](view-inputs.md)と`erb_lint`を導入し、`check --views -- <テストコマンド>`を使います。`--views`なしでは設定があっても未検査です。strict localsは対応するRailsで選べます。ERBを使わないプロジェクトにこの依存は不要です。
+
+各ルールの対象・設定・例外は[ルールの詳細](rules.md)を参照してください。書式やDSLの好みに関するルールは一括で有効にしません。
 
 ## 例外と段階導入
 
-標準設定では認証・ロード等のcallbackを使うだけで指摘しません。callback禁止の方針を明示採用した場合は、必要なcallbackを許可できます。
+標準設定は認証・ロード等のcallbackも検出します。認証基盤などで必要なhookは許可名に指定できます。削除して認証を壊すより、対象を限定した例外を選びます。
 
 ```yaml
 TsurakunaiRails/ControllerCallbacks:
@@ -89,4 +93,4 @@ TsurakunaiRails/ControllerCallbacks:
 
 複数のcallbackを同時登録した場合、すべてが許可名でなければ検出します。ブロック・動的な登録は許可名で見逃しません。認証の明示呼び出しへの移行では、redirect後の停止と全actionの認可を必ず確認してください。
 
-個別の保守処理では理由と代替保証をコメントし、該当行または狭い範囲だけ `rubocop:disable` を使えます。既存アプリでは標準設定から始め、必要な方針だけを選びます。選んでいない方針のために例外を記録する必要はありません。機械的な全件置換は行わず、具体的な問題に関係する機能を最小限に修正・検証します。
+個別の保守処理では理由と代替保証をコメントし、該当行または狭い範囲だけ `rubocop:disable` を使えます。既存アプリでは既存規約と新しい標準方針の違いを確認し、合わない項目をOFFにできます。機械的な全件置換は行わず、具体的な問題に関係する機能を最小限に修正・検証します。

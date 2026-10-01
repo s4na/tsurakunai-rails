@@ -42,7 +42,7 @@ Bundler.with_unbundled_env do
       gem "activerecord", "= #{Gem.loaded_specs.fetch('activerecord').version}", require: false
       gem "sqlite3", "= #{Gem.loaded_specs.fetch('sqlite3').version}", require: false
     RUBY
-    # Assert the installed default accepts Rails conventions before opting in.
+    # Exercise the installed defaults and the consumer's scoped exceptions.
     run!(env, "bundle", "lock", "--local", directory: application)
     # The acceptance runner uses this external bundle: public commands resolve to
     # the installed artifact, while requests, SQL and rendering use real Rails.
@@ -50,7 +50,7 @@ Bundler.with_unbundled_env do
     puts acceptance
     defaults = YAML.safe_load(run!(env, "bundle", "exec", "rubocop", "--plugin", "rubocop-tsurakunai-rails", "--show-cops", directory: application), permitted_classes: [Regexp, Symbol])
     %w[ControllerCallbacks DefaultScope ValidationBypass ModelRequestContext].each do |name|
-      raise "Unexpected default policy: #{name}" if defaults.fetch("TsurakunaiRails/#{name}").fetch("Enabled")
+      raise "Missing default policy: #{name}" unless defaults.fetch("TsurakunaiRails/#{name}").fetch("Enabled")
     end
     File.write(File.join(application, ".rubocop.yml"), <<~YAML)
       plugins:
@@ -78,7 +78,7 @@ Bundler.with_unbundled_env do
       run!(env, "bundle", "exec", "tsurakunai-rails", "install-skill", "--target", target, directory: application)
       folder = target == "codex" ? ".agents" : ".claude"
       installed = File.join(application, folder, "skills", "tsurakunai-rails")
-      %w[review.md responsibilities.md views.md].each do |reference|
+      %w[review.md responsibilities.md views.md daily-design.md].each do |reference|
         raise "Missing installed skill reference: #{reference}" unless File.file?(File.join(installed, "references", reference))
       end
     end

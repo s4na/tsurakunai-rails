@@ -1,10 +1,14 @@
 # つらくないためのルール一覧
 
-標準8ルール、任意の設計方針8ルール、RSpec向け7ルール、文脈が必要な18領域を扱います。既存copはRuboCop Rails / RSpecを利用し、同じ検査を再実装しません。標準セットはplugin読み込みだけで有効になります。RSpecセットは `config/rspec.yml` の明示的な導入が必要です。
+日常設計のスキル方針を主軸に、設計方針8ルールと補助の事故防止8ルールを標準で有効にします。RSpec向け7ルールも標準ON、ERB入力検査はERB利用アプリで設定します。既存copはRuboCop Rails / RSpecを利用し、同じ検査を再実装しません。設計方針・事故防止の両セットはplugin読み込みだけで有効になります。RSpecもplugin読み込みで有効です。既存の`config/rspec.yml`は互換用に残しています。
 
 lintの指摘だけでは不具合と断定できません。実際の型、データ、呼び出し元を確認して修正の要否を判断します。新しいDB制約・削除・例外を機械的に導入しません。導入先の明示設定が優先されます。
 
+[スキルの具体的な設計方針と個別OFF](../skills/tsurakunai-rails/references/daily-design.md)は別に定めます。RuboCopはPORO・純粋関数・ViewComponentの採用を自動判断しません。
+
 ## 標準セット
+
+以下は既存の事故防止ルールです。日常設計を支える補助の検査として維持します。
 
 | cop | 防ぎたい事故 | 直すときの注意 |
 | --- | --- | --- |
@@ -17,15 +21,17 @@ lintの指摘だけでは不具合と断定できません。実際の型、デ�
 | Rails/NotNullColumn | 既存行のあるテーブルへの列追加が失敗する | nullableで追加→backfill→制約などを検討。意味のないdefaultで通さない |
 | Rails/UnusedRenderContent | 応答のbodyが意図せず消える | bodyを許可するstatusまたは空の応答にする |
 
-## 設計方針セット（任意）
+<a id="設計方針セット任意"></a>
 
-以下は構文の存在だけでは不具合を確定できないため、初期無効です。必要なcopだけ個別に `Enabled: true` を設定します。全8方針を採用すると決めた場合は `inherit_gem: rubocop-tsurakunai-rails: config/policies.yml` で導入できます。未採用ならこの方針に合わせる修正・例外コメントは不要です。
+## 設計方針セット（標準ON）
+
+以下は不具合の断定ではなく、このパッケージの標準の設計方針です。合わないcopは個別に`Enabled: false`を設定できます。既存の`config/policies.yml`は互換のため残しますが、追加の読み込みは不要です。許可名や対象範囲も調整できます。
 
 | cop | 防ぎたい事故 | 直すときの注意 |
 | --- | --- | --- |
-| TsurakunaiRails/ControllerCallbacks | actionの認可・ロード・副作用の順序が追えない | callbackを使わない方針を選んだチームだけ。通常の認証・ロードも検出する |
-| TsurakunaiRails/ModelRequestContext | modelがHTTPの暗黙の状態を必要とし、job等から使えない | HTTP依存を明示する方針を選ぶ場合だけ。同名業務属性は区別できない |
-| TsurakunaiRails/DefaultScope | 取得・集計・作成の対象が知らずに変わる | 暗黙の取得条件を避ける方針を選ぶ場合だけ。正当な利用もある |
+| TsurakunaiRails/ControllerCallbacks | actionの認可・ロード・副作用の順序が追えない | 通常の認証・ロードも検出。必要なhookはAllowedMethodsで許可する |
+| TsurakunaiRails/ModelRequestContext | modelがHTTPの暗黙の状態を必要とし、job等から使えない | 同名業務属性は区別できない。AllowedMethodsで許可する |
+| TsurakunaiRails/DefaultScope | 取得・集計・作成の対象が知らずに変わる | 明示的なscopeを使う。正当な利用は対象限定や個別OFFで残せる |
 | TsurakunaiRails/ValidationBypass | validationが動くと思って更新する | 対象はmodel内の明示API。bulkと他レイヤーは文脈で判断 |
 | Rails/EnumHash | 配列の途中への値追加で既存データの意味が変わる | 値を明示。既存DBの値と一致するかレビュー |
 | Rails/SaveBang | 更新に失敗しても成功扱いで先へ進む | 戻り値を判定するか例外API。暗黙の戻り値は許可し呼び出し元をレビュー |
@@ -38,7 +44,11 @@ lintの指摘だけでは不具合と断定できません。実際の型、デ�
 
 `ModelRequestContext`はmodel内のreceiverなしまたは `self` の `params` / `session` / `cookies` / `flash` / `request` / `response` / `current_user` / `current_account` 呼び出しを対象とします。ローカル変数・引数や別objectの同名APIは対象外です。これらが正当な業務属性なら `AllowedMethods` で名前を許可します。HTTP objectの引数渡しや `Current` への依存などはコードレビューで判断します。
 
-## RSpecセット（明示導入）
+<a id="rspecセット明示導入"></a>
+
+## RSpecセット（標準ON）
+
+RSpecのspecファイルを対象にします。RSpec本体を追加する設定ではありません。合わないcopは`.rubocop.yml`で`Enabled: false`にできます。
 
 | cop | 防ぎたい事故 | 直すときの注意 |
 | --- | --- | --- |
@@ -54,7 +64,7 @@ Minitestでも、stubで業務の保証を消さないこと、期待する例�
 
 ## ERB入力セット（明示導入）
 
-[導入手順](view-inputs.md)の設定で、partialの暗黙の入力（TsurakunaiPartialInputs）と解析エラー（ParserErrors）を検査します。対応するRailsでは入力宣言（StrictLocals）も選べます。書式のルールは含めません。Rubyの標準8ルールとは別のERB Lintで実行し、入力の渡し忘れは実際の描画でも検証します。
+[導入手順](view-inputs.md)の設定で、partialの暗黙の入力（TsurakunaiPartialInputs）と解析エラー（ParserErrors）を検査します。対応するRailsでは入力宣言（StrictLocals）も選べます。書式のルールは含めません。Rubyの標準16ルールとは別のERB Lintで実行し、入力の渡し忘れは実際の描画でも検証します。
 
 <a id="意味的レビューの18領域"></a>
 

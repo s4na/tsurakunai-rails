@@ -11,7 +11,7 @@ RSpec.describe "RuboCop plugin integration" do
                   "--only", "TsurakunaiRails", "--format", "json", "--cache", "false", project, *args)
   end
 
-  it "accepts ordinary Rails patterns by default and checks opted-in policies without autocorrection" do
+  it "checks design defaults without autocorrection and honors individual opt-outs" do
     Dir.mktmpdir do |project|
       File.write(File.join(project, ".rubocop.yml"), <<~YAML)
         plugins:
@@ -34,12 +34,6 @@ RSpec.describe "RuboCop plugin integration" do
         FileUtils.mkdir_p(File.dirname(path))
         File.write(path, source)
       end
-      stdout, stderr, status = run_cop(project)
-      expect(status.exitstatus).to eq(0), stderr
-      expect(JSON.parse(stdout).fetch("files").flat_map { |file| file.fetch("offenses") }).to be_empty
-      File.open(File.join(project, ".rubocop.yml"), "a") do |file|
-        file.write("\ninherit_gem:\n  rubocop-tsurakunai-rails: config/policies.yml\n")
-      end
       stdout, stderr, status = run_cop(project, "--autocorrect")
       expect(stderr).not_to include("unrecognized", "Error:")
       expect(status.exitstatus).to eq(1), stderr
@@ -53,6 +47,15 @@ RSpec.describe "RuboCop plugin integration" do
       )
       expect(offenses).to all(include("correctable" => false))
       sources.each { |name, source| expect(File.read(File.join(project, name))).to eq(source) }
+      File.open(File.join(project, ".rubocop.yml"), "a") do |file|
+        file.write("\nTsurakunaiRails/ControllerCallbacks:\n  Enabled: false\n")
+      end
+      stdout, stderr, status = run_cop(project)
+      expect(status.exitstatus).to eq(1), stderr
+      remaining = JSON.parse(stdout).fetch("files").flat_map { |file| file.fetch("offenses") }
+      expect(remaining.map { |offense| offense.fetch("cop_name") }.uniq).to match_array(
+        %w[TsurakunaiRails/ModelRequestContext TsurakunaiRails/DefaultScope TsurakunaiRails/ValidationBypass]
+      )
     end
   end
 end

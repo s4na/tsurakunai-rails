@@ -1,6 +1,6 @@
 # 判断が必要な具体例
 
-変更に関係する項目だけを確認してください。問題が起きていない実装や、必要な動作を確認できているテストまで書き換える必要はありません。
+変更に関係する項目だけを確認してください。[日常の設計方針](daily-design.md)は標準で適用し、このガイドでは正しさと例外を確認します。変更していない実装や、必要な動作を確認できているテストまで書き換える必要はありません。
 
 ## callbackの移行で認可を落とさない
 
@@ -18,7 +18,7 @@ def update
 end
 ```
 
-これは構造の例。`require_login`がredirectするだけならreturnするか例外を使って処理を止める必要がある。実際の認証ライブラリの規約に従う。認証・認可が元と同じ対象の全actionで必ず動くことをrequest testで確認する。ApplicationControllerやconcernのcallbackも追う。認証・ロード等のcallbackが契約を満たしていれば維持する。上の明示呼び出し例は、処理順序に具体的な問題があり移行を選んだ場合の候補である。
+これは構造の例。`require_login`がredirectするだけならreturnするか例外を使って処理を止める必要がある。実際の認証ライブラリの規約に従う。認証・認可が元と同じ対象の全actionで必ず動くことをrequest testで確認する。ApplicationControllerやconcernのcallbackも追う。認証基盤などで必要なcallbackはAllowedMethodsや個別OFFで維持する。上の明示呼び出し例は、標準方針に合わせて移行を選んだ場合の候補であり、全actionの認証・認可を保つことが前提である。
 
 ## validationとDB制約
 
@@ -48,7 +48,7 @@ update_columns(updated_at: Time.current)
 # rubocop:enable TsurakunaiRails/ValidationBypass
 ```
 
-このdisable例はValidationBypassを明示採用した場合に限る。未採用なら例外コメントは不要。省略した監査・callback・楽観ロックに実際の影響があるか確認し、安全な保守処理を個別updateへ機械的に変えない。
+ValidationBypassは標準ON。個別OFFにしている場合は、この例外コメントは不要。省略した監査・callback・楽観ロックに実際の影響があるか確認し、安全な保守処理を個別updateへ機械的に変えない。
 
 ## lintを通過する失敗の追い方
 
