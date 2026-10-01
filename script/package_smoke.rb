@@ -35,6 +35,7 @@ Bundler.with_unbundled_env do
     File.write(File.join(application, "Gemfile"), <<~RUBY)
       source "https://rubygems.org"
       gem "rubocop-tsurakunai-rails", "= #{Gem::Specification.load(File.join(root, 'rubocop-tsurakunai-rails.gemspec')).version}"
+      gem "erb_lint", "~> 0.9", require: false
       gem "rubocop", "#{ENV.fetch('RUBOCOP_VERSION', '>= 1.72.1')}"
     RUBY
     File.write(File.join(application, ".rubocop.yml"), <<~YAML)
@@ -74,6 +75,19 @@ Bundler.with_unbundled_env do
     # Executes the public harness with a real RuboCop subprocess and test command.
     test_command = [RbConfig.ruby, "-e", "exit 0"]
     run!(env, "bundle", "exec", "tsurakunai-rails", "check", "--", *test_command, directory: application)
+    run!(env, "bundle", "exec", "tsurakunai-rails", "install-view-lint", "--strict-locals", directory: application)
+    views = File.join(application, "app", "views", "invoices")
+    FileUtils.mkdir_p(views)
+    partial = File.join(views, "_invoice.html.erb")
+    File.write(partial, "<%# locals: (invoice:) %>\n<%= invoice.number %>\n")
+    run!(env, "bundle", "exec", "tsurakunai-rails", "check", "--views", "--", *test_command, directory: application)
+    File.write(partial, "<% if @can_edit %><%= @invoice.number %><% end %>\n")
+    marker = File.join(application, "tests-ran")
+    stdout, stderr, status = Open3.capture3(env, "bundle", "exec", "tsurakunai-rails", "check", "--views", "--",
+                                          RbConfig.ruby, "-e", "File.write(ARGV.fetch(0), 'ran')", marker, chdir: application)
+    raise "Installed view harness did not fail: #{stderr}" unless status.exitstatus == 1
+    raise "View diagnostics missing: #{stdout}" unless stdout.include?("@can_edit") && stdout.include?("strict locals")
+    raise "Tests did not run after view lint failure" unless File.read(marker) == "ran"
     File.write(model, "class Invoice\n  default_scope { where(active: true) }\n  enum :status, [:draft, :paid]\n  def actor; current_user; end\nend\n")
     specs = File.join(application, "spec")
     FileUtils.mkdir_p(specs)
@@ -88,6 +102,6 @@ Bundler.with_unbundled_env do
       raise "Installed preset did not report #{cop}" unless offenses.any? { |o| o.fetch("cop_name") == cop }
     end
 
-    puts "Package smoke passed: installed gem, plugin, CLI, Codex skill, Claude skill."
+    puts "Package smoke passed: installed gem, plugin, CLI, view lint, Codex skill, Claude skill."
   end
 end

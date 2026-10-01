@@ -43,6 +43,10 @@
 
 Minitestでも、stubで業務の保証を消さないこと、期待する例外・状態・失敗経路を検証することは同じです。RSpecへの移行を要求しません。
 
+## ERB入力セット（明示導入）
+
+[導入手順](view-inputs.md)の設定で、partialの暗黙の入力（TsurakunaiPartialInputs）と解析エラー（ParserErrors）を検査します。対応するRailsでは入力宣言（StrictLocals）も選べます。書式のルールは含めません。Rubyの標準16ルールとは別のERB Lintで実行し、入力の渡し忘れは実際の描画でも検証します。
+
 ## 意味的レビューの18領域
 
 | ID・領域 | 最低限追う証拠 | 判断集 |

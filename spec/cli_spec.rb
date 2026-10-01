@@ -94,4 +94,69 @@ RSpec.describe Tsurakunai::Rails::CLI do
     end
   end
 
+  [[], ["--strict-locals"]].each do |flags|
+    it "installs the view profile #{flags.inspect} without overwriting local configuration" do
+      Dir.mktmpdir do |project|
+        _, stderr, status = cli("install-view-lint", *flags, "--project", project)
+        expect(status.success?).to be(true), stderr
+        config = File.join(project, ".erb_lint.yml")
+        profile = flags.empty? ? "erb_lint.yml" : "erb_lint_strict.yml"
+        expect(File.read(config)).to eq(File.read(File.expand_path("../config/#{profile}", __dir__)))
+        File.write(config, "local edits")
+        _, stderr, status = cli("install-view-lint", "--project", project)
+        expect(status.exitstatus).to eq(2)
+        expect(stderr).to include("Already exists")
+        expect(File.read(config)).to eq("local edits")
+      end
+    end
+  end
+
+  it "preserves an existing custom loader without installing a partial configuration" do
+    Dir.mktmpdir do |project|
+      directory = File.join(project, ".erb_linters")
+      Dir.mkdir(directory)
+      loader = File.join(directory, "tsurakunai_partial_inputs.rb")
+      File.write(loader, "local edits")
+      _, stderr, status = cli("install-view-lint", "--project", project)
+      expect(status.exitstatus).to eq(2)
+      expect(stderr).to include("Already exists")
+      expect(File.read(loader)).to eq("local edits")
+      expect(File).not_to exist(File.join(project, ".erb_lint.yml"))
+    end
+  end
+
+  it "reports missing view configuration while still running the test command" do
+    Dir.mktmpdir do |project|
+      bin = File.join(project, "bin")
+      Dir.mkdir(bin)
+      File.write(File.join(bin, "bundle"), "#!/bin/sh\nexit 0\n")
+      File.chmod(0o755, File.join(bin, "bundle"))
+      result = File.join(project, "test.txt")
+      _, stderr, status = cli("check", "--views", "--", RbConfig.ruby, "-e", "File.write(ARGV[0], 'ran')", result,
+                             chdir: project, env: { "PATH" => "#{bin}:#{ENV.fetch('PATH')}" })
+      expect(status.exitstatus).to eq(1)
+      expect(stderr).to include("install-view-lint")
+      expect(File.read(result)).to eq("ran")
+    end
+  end
+
+  [0, 1].each do |view_status|
+    it "combines view lint status #{view_status} with Ruby lint and runs tests" do
+      Dir.mktmpdir do |project|
+        bin = File.join(project, "bin")
+        Dir.mkdir(bin)
+        log = File.join(project, "lint.log")
+        File.write(File.join(project, ".erb_lint.yml"), "EnableDefaultLinters: false")
+        File.write(File.join(bin, "bundle"), "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$LINT_LOG\"\nif [ \"$2\" = erb_lint ]; then exit #{view_status}; fi\nexit 0\n")
+        File.chmod(0o755, File.join(bin, "bundle"))
+        result = File.join(project, "test.txt")
+        _, _, status = cli("check", "--views", "--", RbConfig.ruby, "-e", "File.write(ARGV[0], 'ran')", result,
+                           chdir: project, env: { "PATH" => "#{bin}:#{ENV.fetch('PATH')}", "LINT_LOG" => log })
+        expect(status.exitstatus).to eq(view_status)
+        expect(File.read(log)).to include("exec rubocop --plugin rubocop-tsurakunai-rails", "exec erb_lint --lint-all")
+        expect(File.read(result)).to eq("ran")
+      end
+    end
+  end
+
 end

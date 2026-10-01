@@ -19,7 +19,7 @@ description: Implement or review Rails changes using focused RuboCop checks and 
 
 - controller・modelの実装や置き場所を変更する場合は、まず[責務の判断集](references/responsibilities.md)を読む: **S13 controllerの入口と出口、S14 modelの不変条件、S15 複数modelの業務処理、S16 入力・検索・表示の境界**。通常のCRUD・局所的なcallback・純粋なmodelの計算を正当なケースとして扱い、業務条件の重複やHTTPへの暗黙依存、失敗時の不整合があるときに具体的な移動先を検討する。
 
-- view・partial・helper・描画経路の変更では[ビューの判断集](references/views.md)を読む: **S17 ビューとpartialの入力、S18 描画とデータ取得・副作用**。トップレベルviewのinstance variableは認め、再利用partialの暗黙依存、必須入力の不足、validation失敗時の表示、N+1、描画による状態変更を具体的な呼び出し元と結果で判断する。Rubyのlint成功をtemplate検査済みと扱わない。
+- view・partial・helper・描画経路の変更では[ビューの判断集](references/views.md)を読む: **S17 ビューとpartialの入力、S18 描画とデータ取得・副作用**。トップレベルviewのinstance variableは認め、再利用partialの暗黙依存、必須入力の不足、validation失敗時の表示、N+1、描画による状態変更を具体的な呼び出し元と結果で判断する。ERB Lint設定・依存の有無を確認し、導入済みなら `check --views -- <実際のテストコマンド>` で実行する。既存設定を勝手に上書きせず、Rubyのlint成功をtemplate検査済みと扱わない。
 - DB・model・更新の変更では[データの判断集](references/data.md)を読む: **S03 DB整合性、S04 関連と削除、S05 更新結果・transaction、S07 競合・状態遷移、S08 migrationとdeploy**。
 - controller・job・外部連携・cacheの変更では[境界の判断集](references/boundaries.md)を読む: **S01 認証・認可・テナント、S02 入力・SQL・出力、S06 外部副作用・ジョブ、S11 cache・ログ・秘密**。
 - 一覧・集計・時刻・金額・テストの変更では[運用とテストの判断集](references/testing.md)を読む: **S09 query・一覧・バッチ、S10 時刻・日付・金額、S12 テストの信頼性**。

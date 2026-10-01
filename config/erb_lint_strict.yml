@@ -1,0 +1,10 @@
+# Requires Rails/template-engine support for strict locals.
+EnableDefaultLinters: false
+glob: 'app/views/**/*.html.erb'
+linters:
+  ParserErrors:
+    enabled: true
+  TsurakunaiPartialInputs:
+    enabled: true
+  StrictLocals:
+    enabled: true

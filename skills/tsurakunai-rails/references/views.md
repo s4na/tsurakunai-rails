@@ -61,7 +61,7 @@
 
 ## 機械と判断の分担
 
-このGemのRuboCop pluginはERB/Haml/Slimを解析するtemplate linterではありません。Rubyのlint成功だけでviewを検査済みと扱わない。既存のtemplate linterがあれば実行し、入力契約・呼び出し元・helper内部・失敗時の描画はスキルと実際の描画テストで確認します。正規表現によるinstance variableの全面禁止を追加しません。
+このGemのRuboCop pluginはERB/Haml/Slimを解析するtemplate linterではありません。Rubyのlint成功だけでviewを検査済みと扱わない。Gemに同梱したERB Lint設定を導入済みなら `check --views -- <実際のテストコマンド>` で実行する。設定は `.erb_lint.yml` と `.erb_linters/tsurakunai_partial_inputs.rb`、依存は `erb_lint ~> 0.9`。新規導入には `install-view-lint`、対応環境では `--strict-locals` を選べる。既存設定は上書きせず必要な項目をマージする。HTML ERB以外は既存のtemplate linterがあれば実行し、入力契約・呼び出し元・helper内部・失敗時の描画はスキルと実際の描画テストで確認します。同梱のTsurakunaiPartialInputsはpartialのRuby tokenだけを検査する。通常のviewと文字列・コメントは許容し、動的参照やhelper内部を検査済みと扱わない。
 
 ## 仕様を確認する資料
 

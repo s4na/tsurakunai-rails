@@ -1,0 +1,8 @@
+# Explicit inputs in reusable partials; no formatting rules.
+EnableDefaultLinters: false
+glob: 'app/views/**/*.html.erb'
+linters:
+  ParserErrors:
+    enabled: true
+  TsurakunaiPartialInputs:
+    enabled: true

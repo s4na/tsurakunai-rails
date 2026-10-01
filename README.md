@@ -88,7 +88,9 @@ inherit_gem:
 
 ## ビューの変数とpartial
 
-[ビューの判断集](skills/tsurakunai-rails/references/views.md)で、トップレベルviewのinstance variable、partialへのlocals、必須・任意入力、validation失敗時のform、helper内部のquery・副作用を扱います。再利用partialの暗黙依存を整理し、通常のRailsのviewまで一律に禁止しません。認可はボタンの表示だけで終えず、更新actionでも保証します。ERB等はこのGemのRuboCop検査対象ではないため、スキルと実際の描画テストで確認します。
+partialの入力を毎回レビューで探す負担を減らすため、[ERB Lint設定と導入手順](docs/view-inputs.md)も同梱しています。`install-view-lint --strict-locals` と `check --views -- <テストコマンド>` で、対応環境では暗黙の入力・宣言漏れを検出し、実際の描画で渡し忘れを拒否できます。
+
+[ビューの判断集](skills/tsurakunai-rails/references/views.md)で、トップレベルviewのinstance variable、partialへのlocals、必須・任意入力、validation失敗時のform、helper内部のquery・副作用を扱います。再利用partialの暗黙依存を整理し、通常のRailsのviewまで一律に禁止しません。認可はボタンの表示だけで終えず、更新actionでも保証します。ERBはRuboCopとは別のERB Lintで検査し、文脈が必要な部分はスキルと実際の描画テストで確認します。
 
 ## 例外と段階導入
 
