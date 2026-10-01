@@ -1,0 +1,4 @@
+interface:
+  display_name: "つらくないRails"
+  short_description: "Railsの重要な問題をRuboCop・振る舞いのテスト・設計レビューで確認"
+  default_prompt: "$tsurakunai-rails を使い、このRails変更を検証し、重大な問題だけを根拠付きでレビューしてください。"

@@ -1,0 +1,21 @@
+# Opt-in: this changes only the RSpec department.
+plugins:
+  - rubocop-rspec
+
+RSpec:
+  Enabled: false
+RSpec/AnyInstance:
+  Enabled: true
+RSpec/MessageChain:
+  Enabled: true
+RSpec/SubjectStub:
+  Enabled: true
+RSpec/VerifiedDoubles:
+  Enabled: true
+  IgnoreNameless: false
+RSpec/UnspecifiedException:
+  Enabled: true
+RSpec/OverwritingSetup:
+  Enabled: true
+RSpec/VoidExpect:
+  Enabled: true

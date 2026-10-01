@@ -1,0 +1,17 @@
+# Opt-in policies: enable individual rules only after choosing the convention.
+TsurakunaiRails/ControllerCallbacks:
+  Enabled: true
+TsurakunaiRails/DefaultScope:
+  Enabled: true
+TsurakunaiRails/ValidationBypass:
+  Enabled: true
+TsurakunaiRails/ModelRequestContext:
+  Enabled: true
+Rails/EnumHash:
+  Enabled: true
+Rails/SaveBang:
+  Enabled: true
+Rails/HasManyOrHasOneDependent:
+  Enabled: true
+Rails/UniqueValidationWithoutIndex:
+  Enabled: true

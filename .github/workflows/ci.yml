@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ruby:
+    name: Ruby ${{ matrix.ruby }} / RuboCop ${{ matrix.rubocop }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.2', '3.3', '3.4', '4.0']
+        rubocop: ['latest']
+        include:
+          - ruby: '3.2'
+            rubocop: '1.72.1'
+    env:
+      BUNDLE_IGNORE_CONFIG: '1'
+      BUNDLE_FROZEN: 'false'
+      ACTIONVIEW_VERSION: ${{ matrix.rubocop == 'latest' && '>= 7.1' || '~> 7.1.0' }}
+      RUBOCOP_VERSION: ${{ matrix.rubocop == 'latest' && '>= 1.72.1' || '= 1.72.1' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler: '2.6.9'
+      - name: Install dependencies
+        run: bundle install --jobs 4
+      - name: Tests
+        run: bundle exec rake spec
+      - name: Lint
+        run: bundle exec rubocop
+      - name: Validate portable skill
+        run: bundle exec ruby script/validate_skill.rb
+      - name: Build distributable gem
+        run: bundle exec rake build
+      - name: Install and exercise the packaged gem
+        run: bundle exec ruby script/package_smoke.rb
+
+  workflows:
+    name: GitHub Actions lint and security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.1
+        with:
+          persist-credentials: false
+      - name: Install pinned actionlint with checksum verification
+        env:
+          ACTIONLINT_VERSION: '1.7.12'
+        run: |
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          base="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
+          curl --fail --silent --show-error --location "$base/$archive" -o "$RUNNER_TEMP/$archive"
+          curl --fail --silent --show-error --location "$base/actionlint_${ACTIONLINT_VERSION}_checksums.txt" -o "$RUNNER_TEMP/checksums.txt"
+          (cd "$RUNNER_TEMP" && sha256sum --check --ignore-missing checksums.txt)
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color
+      - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+        with:
+          version: '1.30.0'
+          advanced-security: false
+          online-audits: false
+          inputs: .github/workflows

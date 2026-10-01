@@ -1,0 +1,75 @@
+plugins:
+  - rubocop-rails
+
+# A focused baseline; upstream Rails styles are not enabled wholesale.
+Rails:
+  Enabled: false
+
+Rails/ActiveRecordOverride:
+  Enabled: true
+  AutoCorrect: false
+Rails/DuplicateAssociation:
+  Enabled: true
+  AutoCorrect: false
+Rails/AddColumnIndex:
+  Enabled: true
+  AutoCorrect: false
+Rails/DangerousColumnNames:
+  Enabled: true
+  AutoCorrect: false
+Rails/AfterCommitOverride:
+  Enabled: true
+  AutoCorrect: false
+Rails/NotNullColumn:
+  Enabled: true
+  AutoCorrect: false
+Rails/EnumUniqueness:
+  Enabled: true
+  AutoCorrect: false
+Rails/EnumHash:
+  Enabled: false
+  AutoCorrect: false
+Rails/SaveBang:
+  Enabled: false
+  AutoCorrect: false
+  AllowImplicitReturn: true
+Rails/HasManyOrHasOneDependent:
+  Enabled: false
+  AutoCorrect: false
+Rails/UniqueValidationWithoutIndex:
+  Enabled: false
+  AutoCorrect: false
+Rails/UnusedRenderContent:
+  Enabled: true
+  AutoCorrect: false
+
+TsurakunaiRails/ControllerCallbacks:
+  Description: Make controller execution order explicit.
+  Enabled: false
+  VersionAdded: '0.1'
+  AllowedMethods: []
+  Include:
+    - '**/app/controllers/**/*.rb'
+    - '**/app/controllers/concerns/**/*.rb'
+
+TsurakunaiRails/DefaultScope:
+  Description: Make query filtering and creation defaults explicit.
+  Enabled: false
+  VersionAdded: '0.1'
+  Include:
+    - '**/app/models/**/*.rb'
+
+TsurakunaiRails/ValidationBypass:
+  Description: Review writes which explicitly skip validation.
+  Enabled: false
+  VersionAdded: '0.1'
+  Include:
+    - '**/app/models/**/*.rb'
+
+TsurakunaiRails/ModelRequestContext:
+  Description: Keep HTTP request context out of persistence and business behavior.
+  Enabled: false
+  VersionAdded: '0.1'
+  AllowedMethods: []
+  Include:
+    - '**/app/models/**/*.rb'

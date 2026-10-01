@@ -1,0 +1,24 @@
+plugins:
+  - rubocop-tsurakunai-rails
+
+inherit_gem:
+  rubocop-tsurakunai-rails: config/rspec.yml
+
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - vendor/**/*
+    - pkg/**/*
+    - spec/fixtures/**/*
+
+# The repository checks correctness, not personal formatting preferences.
+Style:
+  Enabled: false
+Layout:
+  Enabled: false
+Metrics:
+  Enabled: false
+Naming:
+  Enabled: false
