@@ -18,7 +18,7 @@ RSpec.describe "RuboCop plugin integration" do
           - rubocop-tsurakunai-rails
         AllCops:
           NewCops: enable
-          TargetRubyVersion: 3.2
+          TargetRubyVersion: 3.0
           SuggestExtensions: false
       YAML
       sources = {

@@ -28,7 +28,7 @@ bundle exec ruby script/acceptance.rb
 
 任意ERBセットについては、正常partialを通し、入力が食い違うpartialを検出し、lint失敗後も描画テストが走ることを確認します。単一actionのpartialまでlocalsを必須にする方針は、チームが選ぶ場合だけです。
 
-CIではこの検証をテストとして実行します。さらに`script/package_smoke.rb`でも、ビルドしたGemを別のbundleへインストールして同じ検証を実行します。ソースだけ動き、配布物が使えない状態を防ぎます。Rails 7.1系を下限の組み合わせで、その他は各Rubyで解決できるRailsを検証します。
+CIではこの検証をテストとして実行します。さらに`script/package_smoke.rb`でも、ビルドしたGemを別のbundleへインストールして同じ検証を実行します。ソースだけ動き、配布物が使えない状態を防ぎます。Ruby 3.0・3.1とRuboCop下限ではRails 7.1／SQLite 1系、それ以外では各Rubyで解決できるRails／SQLite 2系を検証します。
 
 ## スキルの判断品質
 

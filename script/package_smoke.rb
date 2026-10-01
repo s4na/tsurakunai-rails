@@ -60,7 +60,7 @@ Bundler.with_unbundled_env do
       AllCops:
         DisabledByDefault: true
         SuggestExtensions: false
-        TargetRubyVersion: 3.2
+        TargetRubyVersion: 3.0
         TargetRailsVersion: 7.1
       TsurakunaiRails/ControllerCallbacks:
         Enabled: true

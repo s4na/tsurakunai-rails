@@ -41,7 +41,7 @@ Dir.mktmpdir("tsurakunai-acceptance-") do |project|
     AllCops:
       NewCops: enable
       SuggestExtensions: false
-      TargetRubyVersion: 3.2
+      TargetRubyVersion: 3.0
       TargetRailsVersion: 7.1
       Include:
         - app/**/*.rb

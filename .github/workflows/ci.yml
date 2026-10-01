@@ -20,16 +20,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: ['3.2', '3.3', '3.4', '4.0']
+        ruby: ['3.0', '3.1', '3.2', '3.3', '3.4', '4.0']
         rubocop: ['latest']
         include:
-          - ruby: '3.2'
+          - ruby: '3.0'
             rubocop: '1.72.1'
     env:
       BUNDLE_IGNORE_CONFIG: '1'
       BUNDLE_FROZEN: 'false'
-      ACTIONVIEW_VERSION: ${{ matrix.rubocop == 'latest' && '>= 7.1' || '~> 7.1.0' }}
-      SQLITE_VERSION: ${{ matrix.rubocop == 'latest' && '~> 2.0' || '~> 1.4' }}
+      ACTIONVIEW_VERSION: ${{ matrix.rubocop == 'latest' && matrix.ruby != '3.0' && matrix.ruby != '3.1' && '>= 7.1' || '~> 7.1.0' }}
+      SQLITE_VERSION: ${{ matrix.rubocop == 'latest' && matrix.ruby != '3.0' && matrix.ruby != '3.1' && '~> 2.0' || '~> 1.4' }}
       RUBOCOP_VERSION: ${{ matrix.rubocop == 'latest' && '>= 1.72.1' || '= 1.72.1' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -38,7 +38,7 @@ jobs:
       - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          bundler: '2.6.9'
+          bundler: '2.5.23'
       - name: Install dependencies
         run: bundle install --jobs 4
       - name: Tests
