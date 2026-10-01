@@ -37,7 +37,7 @@ Bundler.with_unbundled_env do
       source "https://rubygems.org"
       gem "rubocop-tsurakunai-rails", "= #{Gem::Specification.load(File.join(root, 'rubocop-tsurakunai-rails.gemspec')).version}"
       gem "erb_lint", "~> 0.9", require: false
-      gem "rubocop", "#{ENV.fetch('RUBOCOP_VERSION', '>= 1.72.1')}"
+      gem "rubocop", "#{ENV.fetch('RUBOCOP_VERSION', '>= 1.74.0')}"
       gem "actionpack", "= #{Gem.loaded_specs.fetch('actionpack').version}", require: false
       gem "activerecord", "= #{Gem.loaded_specs.fetch('activerecord').version}", require: false
       gem "sqlite3", "= #{Gem.loaded_specs.fetch('sqlite3').version}", require: false

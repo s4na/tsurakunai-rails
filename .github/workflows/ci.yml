@@ -24,13 +24,13 @@ jobs:
         rubocop: ['latest']
         include:
           - ruby: '3.0'
-            rubocop: '1.72.1'
+            rubocop: '1.74.0'
     env:
       BUNDLE_IGNORE_CONFIG: '1'
       BUNDLE_FROZEN: 'false'
       ACTIONVIEW_VERSION: ${{ matrix.rubocop == 'latest' && matrix.ruby != '3.0' && matrix.ruby != '3.1' && '>= 7.1' || '~> 7.1.0' }}
       SQLITE_VERSION: ${{ matrix.rubocop == 'latest' && matrix.ruby != '3.0' && matrix.ruby != '3.1' && '~> 2.0' || '~> 1.4' }}
-      RUBOCOP_VERSION: ${{ matrix.rubocop == 'latest' && '>= 1.72.1' || '= 1.72.1' }}
+      RUBOCOP_VERSION: ${{ matrix.rubocop == 'latest' && '>= 1.74.0' || '= 1.74.0' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

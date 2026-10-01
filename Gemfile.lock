@@ -3,7 +3,7 @@ PATH
   specs:
     rubocop-tsurakunai-rails (0.1.0)
       lint_roller (~> 1.1)
-      rubocop (>= 1.72.1, < 2.0)
+      rubocop (>= 1.74.0, < 2.0)
       rubocop-rails (>= 2.30, < 3.0)
       rubocop-rspec (>= 3.4, < 4.0)
 
@@ -165,7 +165,7 @@ DEPENDENCIES
   erb_lint (~> 0.9)
   rake (~> 13.0)
   rspec (~> 3.13)
-  rubocop (>= 1.72.1)
+  rubocop (>= 1.74.0)
   rubocop-tsurakunai-rails!
   sqlite3 (~> 2.0)
 

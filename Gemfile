@@ -17,4 +17,4 @@ gem "rake", "~> 13.0"
 gem "rspec", "~> 3.13"
 gem "sqlite3", ENV.fetch("SQLITE_VERSION", sqlite_requirement), require: false
 
-gem "rubocop", ENV.fetch("RUBOCOP_VERSION", ">= 1.72.1")
+gem "rubocop", ENV.fetch("RUBOCOP_VERSION", ">= 1.74.0")
