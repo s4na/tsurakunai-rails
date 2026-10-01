@@ -32,7 +32,7 @@ jobs:
       SQLITE_VERSION: ${{ matrix.rubocop == 'latest' && '~> 2.0' || '~> 1.4' }}
       RUBOCOP_VERSION: ${{ matrix.rubocop == 'latest' && '>= 1.72.1' || '= 1.72.1' }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.3.1
         with:
           persist-credentials: false
       - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.3.1
         with:
           persist-credentials: false
       - name: Install pinned actionlint with checksum verification
