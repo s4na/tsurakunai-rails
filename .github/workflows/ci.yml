@@ -24,11 +24,11 @@ jobs:
         rubocop: ['latest']
         include:
           - ruby: '3.2'
-            rubocop: '1.72.0'
+            rubocop: '1.72.1'
     env:
       BUNDLE_IGNORE_CONFIG: '1'
       BUNDLE_FROZEN: 'false'
-      RUBOCOP_VERSION: ${{ matrix.rubocop == 'latest' && '>= 1.72' || '= 1.72.0' }}
+      RUBOCOP_VERSION: ${{ matrix.rubocop == 'latest' && '>= 1.72.1' || '= 1.72.1' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.1
         with:

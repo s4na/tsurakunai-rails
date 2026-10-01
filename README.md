@@ -1,12 +1,12 @@
 # つらくないRails
 
-Railsの「分かっている人がうまく使う」を、チームとAIでも再現するための小さなハーネスです。重要な構文上の問題を **RuboCop**、業務の文脈が必要な問題を **Codex / Claude Code向けスキル**、実際の振る舞いを **アプリのテスト**で確認します。
+Railsの「分かっている人がうまく使う」を、チームとAIでも再現するための小さなハーネスです。標準15ルール・RSpec向け7ルールで重要な構文上の問題を **RuboCop**、業務の文脈が必要な問題を **Codex / Claude Code向けスキル**、実際の振る舞いを **アプリのテスト**で確認します。
 
 書式やメソッドの長さの好みを増やすパッケージではありません。指摘数より、認可漏れ、見えない状態変更、データ破損などの事故を減らすことを優先します。ルールはRails公式の禁止事項ではなく、明示的な実行順序を重視するチーム向けの方針です。
 
 ## 導入（Gem + スキル）
 
-Ruby 3.2以上、RuboCop 1.72以上 / 2未満が必要です。Railsの起動には依存しません。CIはRuby 3.2・3.3・3.4・4.0とRuboCopの下限で検証します。
+Ruby 3.2以上、RuboCop 1.72.1以上 / 2未満が必要です。Railsの起動には依存しません。CIはRuby 3.2・3.3・3.4・4.0とRuboCopの下限で検証します。
 
 まだRubyGemsには公開していません。GitHubから導入できます。チームではレビュー済みのcommit SHAを `ref:` に指定し、Gemfile.lockをコミットしてください。
 
@@ -25,6 +25,9 @@ end
 # .rubocop.yml
 plugins:
   - rubocop-tsurakunai-rails
+# Railsのバージョンを推定できない構成では、実際の対象版を明示する。
+# AllCops:
+#   TargetRailsVersion: 7.1
 ```
 
 ```sh
@@ -44,7 +47,7 @@ bundle exec tsurakunai-rails check -- bin/rails test
 # RSpec
 bundle exec tsurakunai-rails check -- bundle exec rspec
 # RuboCopだけを実行する場合
-bundle exec rubocop --only TsurakunaiRails
+bundle exec rubocop --only TsurakunaiRails,Rails
 ```
 
 `check`はこのpluginを明示的に読み込み、lintが失敗してもテストを実行します。両方成功なら0、どちらか失敗なら1、引数や導入先が不正なら2を返します。テストコマンドはシェル展開せず実行するため、パイプやリダイレクトは使えません。
@@ -55,18 +58,22 @@ CIには同じ `check -- <テストコマンド>` を置き、PRレビューに�
 
 ## 何を守るか
 
-| 問題 | 担当 | 初期方針 |
-| --- | --- | --- |
-| controller callbackによる暗黙の実行順序 | `TsurakunaiRails/ControllerCallbacks` | before / after / aroundとprepend / append、旧filter名を検出 |
-| 暗黙の絞り込み・作成時の既定値 | `TsurakunaiRails/DefaultScope` | `default_scope`を検出し、名前付きscopeへ |
-| 検証を迂回する個別更新 | `TsurakunaiRails/ValidationBypass` | `update_attribute(!)`、`update_column(s)`、`save(!)(validate: false)`を検出 |
-| 認可・テナント境界・DB制約・競合 | スキル + テスト | 具体的な失敗シナリオに基づき判断 |
-| transactionと外部副作用・再試行 | スキル + テスト | rollback、重複、配信保証の必要性を確認 |
-| migration・N+1・テストの保証 | スキル + テスト | 変更の影響と観測できる振る舞いを確認 |
+[ルール一覧](docs/rules.md)に、copごとの採用理由・改善の方向・正当な例外・静的検査の限界をまとめています。
 
-controllerルールは `app/controllers/**/*.rb`（concern含む）、modelルールは `app/models/**/*.rb`（concern含む）を対象にします。継承関係・receiverの型は推論しません。model内の同名の独自APIも検出する可能性があります。異なる配置を使う場合は `Include` を上書きしてください。動的な `send`、別レイヤー、`update_all` / `insert_all`などのbulk処理、動的なvalidation optionsは意味的レビューで判断します。DB制約で保証されたbulk処理まで一律禁止しません。
+- **標準15ルール**: 独自3ルールにRuboCop Railsの重要な12ルールを組み合わせます。callback・暗黙scope・validation迂回に加え、永続化APIの上書き、関連・commit hookの重複、enumの値、更新失敗、関連削除、一意index、migrationと応答の事故を扱います。pluginの読み込みだけで上流pluginも読み込みます。
+- **RSpec7ルール**: 全instanceのstub、message chain、検査対象のstub、契約を検証しないdouble、種類を指定しない例外assert、setupの上書き、matcherのないexpectを扱います。RSpec以外のプロジェクトへ要求しません。
+- **意味的レビュー12領域**: 認可、入力・SQL・出力、DB整合性、削除、更新結果、外部副作用・job、競合、migration、query、時刻・金額、cache・秘密、テスト。悪い例・改善案・例外・検証方法を[スキル](skills/tsurakunai-rails/SKILL.md)から必要に応じて読みます。
 
-3ルールとも自動修正しません。callbackの削除で認証が落ちたり、更新APIの差し替えでcallbackや性能が変わるためです。
+RSpecセットを使う場合は次を追加します。必要な上流GemもこのGemの依存として導入されます。
+
+```yaml
+inherit_gem:
+  rubocop-tsurakunai-rails: config/rspec.yml
+```
+
+書式やDSL表現の好みに関する上流Rails/RSpecルールはこのセットから一括で有効にしません。既存の方針で追加するルールや例外は導入先の `.rubocop.yml` に明示してください。標準セットの自動修正は無効です。callbackの削除、bang APIやenumへの変更で意味・認可・既存DB値が変わる可能性があるためです。
+
+独自controllerルールは `app/controllers/**/*.rb`（concern含む）、modelルールは `app/models/**/*.rb`（concern含む）を対象にします。継承関係・receiverの型は推論しません。model内の同名の独自APIも検出する可能性があります。異なる配置を使う場合は `Include` を上書きしてください。動的な `send`、別レイヤー、bulk処理、動的optionsは意味的レビューで判断します。上流の一意index検査もschemaや条件によって検査できない場合があり、lint成功だけでDB整合性を保証しません。
 
 ## 例外と段階導入
 

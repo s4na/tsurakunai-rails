@@ -22,5 +22,7 @@ Gem::Specification.new do |spec|
   spec.executables = ["tsurakunai-rails"]
   spec.require_paths = ["lib"]
   spec.add_dependency "lint_roller", "~> 1.1"
-  spec.add_dependency "rubocop", ">= 1.72", "< 2.0"
+  spec.add_dependency "rubocop", ">= 1.72.1", "< 2.0"
+  spec.add_dependency "rubocop-rails", ">= 2.30", "< 3.0"
+  spec.add_dependency "rubocop-rspec", ">= 3.4", "< 4.0"
 end

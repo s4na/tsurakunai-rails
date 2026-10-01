@@ -1,3 +1,48 @@
+plugins:
+  - rubocop-rails
+
+# A focused baseline; upstream Rails styles are not enabled wholesale.
+Rails:
+  Enabled: false
+
+Rails/ActiveRecordOverride:
+  Enabled: true
+  AutoCorrect: false
+Rails/DuplicateAssociation:
+  Enabled: true
+  AutoCorrect: false
+Rails/AddColumnIndex:
+  Enabled: true
+  AutoCorrect: false
+Rails/DangerousColumnNames:
+  Enabled: true
+  AutoCorrect: false
+Rails/AfterCommitOverride:
+  Enabled: true
+  AutoCorrect: false
+Rails/NotNullColumn:
+  Enabled: true
+  AutoCorrect: false
+Rails/EnumUniqueness:
+  Enabled: true
+  AutoCorrect: false
+Rails/EnumHash:
+  Enabled: true
+  AutoCorrect: false
+Rails/SaveBang:
+  Enabled: true
+  AutoCorrect: false
+  AllowImplicitReturn: true
+Rails/HasManyOrHasOneDependent:
+  Enabled: true
+  AutoCorrect: false
+Rails/UniqueValidationWithoutIndex:
+  Enabled: true
+  AutoCorrect: false
+Rails/UnusedRenderContent:
+  Enabled: true
+  AutoCorrect: false
+
 TsurakunaiRails/ControllerCallbacks:
   Description: Make controller execution order explicit.
   Enabled: true
