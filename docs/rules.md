@@ -1,6 +1,6 @@
 # つらくないためのルール一覧
 
-標準15ルール、RSpec向け7ルール、文脈が必要な12領域を扱います。既存copはRuboCop Rails / RSpecを利用し、同じ検査を再実装しません。標準セットはplugin読み込みだけで有効になります。RSpecセットは `config/rspec.yml` の明示的な導入が必要です。
+標準16ルール、RSpec向け7ルール、文脈が必要な16領域を扱います。既存copはRuboCop Rails / RSpecを利用し、同じ検査を再実装しません。標準セットはplugin読み込みだけで有効になります。RSpecセットは `config/rspec.yml` の明示的な導入が必要です。
 
 構文検査が指摘するのはリスクの入口です。型・業務・データ・呼び出し元を確認して修正または例外を判断します。新しいDB制約・削除・例外を機械的に導入しません。導入先の明示設定が優先されます。
 
@@ -9,6 +9,7 @@
 | cop | 防ぎたい事故 | 対応と境界 |
 | --- | --- | --- |
 | TsurakunaiRails/ControllerCallbacks | actionの認可・ロード・副作用の順序が追えない | 明示的な流れへ。認証基盤の必須hookは許可名で管理 |
+| TsurakunaiRails/ModelRequestContext | modelがHTTPの暗黙の状態を必要とし、job等から使えない | 値・actorを引数で渡す。正当な業務属性の同名呼び出しは許可名で管理 |
 | TsurakunaiRails/DefaultScope | 取得・集計・作成の対象が知らずに変わる | 名前付きscope。継承や動的定義はレビュー |
 | TsurakunaiRails/ValidationBypass | validationが動くと思って更新する | 対象はmodel内の明示API。bulkと他レイヤーは文脈で判断 |
 | Rails/ActiveRecordOverride | 標準の永続化APIの契約が上書きされる | lifecycle契約を維持する。model callbackを全部禁止しない |
@@ -26,6 +27,8 @@
 
 独自copは自動修正を実装しません。追加した上流copで自動修正を持つものもこのセットでは `AutoCorrect: false` にしています。修正後の仕様・安全性をレビューするためです。`SaveBang`は型を推論せず、代入・引数・暗黙の戻り値などの全経路を保証しないため、永続化の結果を呼び出し元まで追います。
 
+`ModelRequestContext`はmodel内のreceiverなしまたは `self` の `params` / `session` / `cookies` / `flash` / `request` / `response` / `current_user` / `current_account` 呼び出しを対象とします。ローカル変数・引数や別objectの同名APIは対象外です。これらが正当な業務属性なら `AllowedMethods` で名前を許可します。HTTP objectの引数渡しや `Current` への依存などは意味的レビューで判断します。
+
 ## RSpecセット（明示導入）
 
 | cop | 防ぎたい事故 | 対応と境界 |
@@ -40,7 +43,7 @@
 
 Minitestでも、stubで業務の保証を消さないこと、期待する例外・状態・失敗経路を検証することは同じです。RSpecへの移行を要求しません。
 
-## 意味的レビューの12領域
+## 意味的レビューの16領域
 
 | ID・領域 | 最低限追う証拠 | 判断集 |
 | --- | --- | --- |
@@ -56,6 +59,10 @@ Minitestでも、stubで業務の保証を消さないこと、期待する例�
 | S10 時刻・日付・金額 | 業務zone、日付境界、precision、通貨、丸め | [運用とテスト](../skills/tsurakunai-rails/references/testing.md#s10-時刻日付金額) |
 | S11 cache・ログ・秘密 | tenant/userを含むkey、失効、PIIとtoken | [境界](../skills/tsurakunai-rails/references/boundaries.md#s11-cacheログ秘密) |
 | S12 テストの信頼性 | 公開APIの結果、失敗時の状態、fixture、順序と時刻 | [運用とテスト](../skills/tsurakunai-rails/references/testing.md#s12-テストの信頼性) |
+| S13 controllerの入口と出口 | permit・認可・操作・結果の対応、業務条件の重複 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s13-コントローラはhttpの入口と出口を扱う) |
+| S14 modelの不変条件 | 全入口の条件、状態遷移、HTTP依存、callbackの局所性 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s14-モデルはデータと業務の不変条件を保つ) |
+| S15 複数modelの業務処理 | 自然な集約、transaction、成功と失敗、actorの契約 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s15-複数モデルの業務処理に明示的な入口を作る) |
+| S16 入力・検索・表示の境界 | UI専用の条件と保存条件、queryのscope、表示の副作用 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s16-入力検索表示を永続モデルへ押し込まない) |
 
 すべてを全変更に要求しません。変更した振る舞い・データ・entrypointに該当する領域を選び、根拠が足りない部分は未検証として記録します。
 

@@ -1,6 +1,6 @@
 # つらくないRails
 
-Railsの「分かっている人がうまく使う」を、チームとAIでも再現するための小さなハーネスです。標準15ルール・RSpec向け7ルールで重要な構文上の問題を **RuboCop**、業務の文脈が必要な問題を **Codex / Claude Code向けスキル**、実際の振る舞いを **アプリのテスト**で確認します。
+Railsの「分かっている人がうまく使う」を、チームとAIでも再現するための小さなハーネスです。標準16ルール・RSpec向け7ルールで重要な構文上の問題を **RuboCop**、業務の文脈が必要な問題を **Codex / Claude Code向けスキル**、実際の振る舞いを **アプリのテスト**で確認します。
 
 書式やメソッドの長さの好みを増やすパッケージではありません。指摘数より、認可漏れ、見えない状態変更、データ破損などの事故を減らすことを優先します。ルールはRails公式の禁止事項ではなく、明示的な実行順序を重視するチーム向けの方針です。
 
@@ -60,9 +60,9 @@ CIには同じ `check -- <テストコマンド>` を置き、PRレビューに�
 
 [ルール一覧](docs/rules.md)に、copごとの採用理由・改善の方向・正当な例外・静的検査の限界をまとめています。
 
-- **標準15ルール**: 独自3ルールにRuboCop Railsの重要な12ルールを組み合わせます。callback・暗黙scope・validation迂回に加え、永続化APIの上書き、関連・commit hookの重複、enumの値、更新失敗、関連削除、一意index、migrationと応答の事故を扱います。pluginの読み込みだけで上流pluginも読み込みます。
+- **標準16ルール**: 独自4ルールにRuboCop Railsの重要な12ルールを組み合わせます。callback・暗黙scope・validation迂回・modelのHTTP依存に加え、永続化APIの上書き、関連・commit hookの重複、enumの値、更新失敗、関連削除、一意index、migrationと応答の事故を扱います。pluginの読み込みだけで上流pluginも読み込みます。
 - **RSpec7ルール**: 全instanceのstub、message chain、検査対象のstub、契約を検証しないdouble、種類を指定しない例外assert、setupの上書き、matcherのないexpectを扱います。RSpec以外のプロジェクトへ要求しません。
-- **意味的レビュー12領域**: 認可、入力・SQL・出力、DB整合性、削除、更新結果、外部副作用・job、競合、migration、query、時刻・金額、cache・秘密、テスト。悪い例・改善案・例外・検証方法を[スキル](skills/tsurakunai-rails/SKILL.md)から必要に応じて読みます。
+- **意味的レビュー16領域**: 認可、入力・SQL・出力、DB整合性、削除、更新結果、外部副作用・job、競合、migration、query、時刻・金額、cache・秘密、テスト、controller/modelの責務、複数modelの処理、入力・検索・表示の境界。悪い例・改善案・例外・検証方法を[スキル](skills/tsurakunai-rails/SKILL.md)から必要に応じて読みます。
 
 RSpecセットを使う場合は次を追加します。必要な上流GemもこのGemの依存として導入されます。
 
@@ -74,6 +74,17 @@ inherit_gem:
 書式やDSL表現の好みに関する上流Rails/RSpecルールはこのセットから一括で有効にしません。既存の方針で追加するルールや例外は導入先の `.rubocop.yml` に明示してください。標準セットの自動修正は無効です。callbackの削除、bang APIやenumへの変更で意味・認可・既存DB値が変わる可能性があるためです。
 
 独自controllerルールは `app/controllers/**/*.rb`（concern含む）、modelルールは `app/models/**/*.rb`（concern含む）を対象にします。継承関係・receiverの型は推論しません。model内の同名の独自APIも検出する可能性があります。異なる配置を使う場合は `Include` を上書きしてください。動的な `send`、別レイヤー、bulk処理、動的optionsは意味的レビューで判断します。上流の一意index検査もschemaや条件によって検査できない場合があり、lint成功だけでDB整合性を保証しません。
+
+## コントローラとモデルの扱い
+
+[責務の判断集](skills/tsurakunai-rails/references/responsibilities.md)に、置き場所の判断と具体例をまとめています。
+
+- controllerは認証・認可・入力・対象取得・業務操作の呼び出し・HTTP応答を扱う。単純なCRUDはそのままでよい。
+- modelはデータの不変条件、状態遷移、関連、純粋な業務計算を扱う。必要な値やactorは引数で渡す。
+- 複数modelの手順とtransactionは、自然な集約または意味のある操作object等へ明示する。
+- 画面固有の入力、複雑な検索、表示の整形は、必要性に応じてform/query/presenter等の境界へ分ける。
+
+「全controllerをserviceへ」「modelは属性だけ」「行数が多いから分割」では判断しません。業務条件の重複、HTTPの暗黙の状態への依存、失敗時の不整合などの具体的な負担を根拠にします。構文だけで検出できるmodel内のHTTP helper呼び出しは `TsurakunaiRails/ModelRequestContext` が扱います。
 
 ## 例外と段階導入
 

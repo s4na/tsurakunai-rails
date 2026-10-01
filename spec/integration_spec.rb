@@ -26,7 +26,8 @@ RSpec.describe "RuboCop plugin integration" do
         "app/controllers/concerns/audit.rb" => "module Audit\n  after_action { audit }\nend\n",
         "app/models/invoice.rb" => "class Invoice\n  default_scope { where(active: true) }\n  def finish\n    update_columns(status: 'done')\n  end\nend\n",
         "app/models/allowed.rb" => "class Allowed\n  # Reviewed repair: constraints guarantee validity.\n  # rubocop:disable TsurakunaiRails/ValidationBypass\n  def repair\n    update_column(:status, 'done')\n  end\n  # rubocop:enable TsurakunaiRails/ValidationBypass\nend\n",
-        "lib/other.rb" => "before_action :step\ndefault_scope { all }\nrecord.update_columns(status: 'done')\n"
+        "app/models/concerns/input.rb" => "module Input\n  def normalize\n    params.fetch(:memo)\n  end\nend\n",
+        "lib/other.rb" => "before_action :step\ndefault_scope { all }\nrecord.update_columns(status: 'done')\nparams.fetch(:memo)\n"
       }
       sources.each do |name, source|
         path = File.join(project, name)
@@ -40,6 +41,7 @@ RSpec.describe "RuboCop plugin integration" do
       offenses = report.fetch("files").flat_map { |file| file.fetch("offenses") }
       expect(offenses.map { |offense| offense.fetch("cop_name") }.tally).to eq(
         "TsurakunaiRails/ControllerCallbacks" => 2,
+        "TsurakunaiRails/ModelRequestContext" => 1,
         "TsurakunaiRails/DefaultScope" => 1,
         "TsurakunaiRails/ValidationBypass" => 1
       )

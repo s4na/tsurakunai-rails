@@ -65,3 +65,11 @@ TsurakunaiRails/ValidationBypass:
   VersionAdded: '0.1'
   Include:
     - '**/app/models/**/*.rb'
+
+TsurakunaiRails/ModelRequestContext:
+  Description: Keep HTTP request context out of persistence and business behavior.
+  Enabled: true
+  VersionAdded: '0.1'
+  AllowedMethods: []
+  Include:
+    - '**/app/models/**/*.rb'

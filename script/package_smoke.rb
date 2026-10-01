@@ -53,6 +53,8 @@ Bundler.with_unbundled_env do
         Enabled: true
       TsurakunaiRails/ValidationBypass:
         Enabled: true
+      TsurakunaiRails/ModelRequestContext:
+        Enabled: true
       Rails/EnumHash:
         Enabled: true
     YAML
@@ -61,7 +63,9 @@ Bundler.with_unbundled_env do
       run!(env, "bundle", "exec", "tsurakunai-rails", "install-skill", "--target", target, directory: application)
       folder = target == "codex" ? ".agents" : ".claude"
       installed = File.join(application, folder, "skills", "tsurakunai-rails")
-      raise "Missing installed skill reference" unless File.file?(File.join(installed, "references", "review.md"))
+      %w[review.md responsibilities.md].each do |reference|
+        raise "Missing installed skill reference: #{reference}" unless File.file?(File.join(installed, "references", reference))
+      end
     end
     model_dir = File.join(application, "app", "models")
     FileUtils.mkdir_p(model_dir)
@@ -70,7 +74,7 @@ Bundler.with_unbundled_env do
     # Executes the public harness with a real RuboCop subprocess and test command.
     test_command = [RbConfig.ruby, "-e", "exit 0"]
     run!(env, "bundle", "exec", "tsurakunai-rails", "check", "--", *test_command, directory: application)
-    File.write(model, "class Invoice\n  default_scope { where(active: true) }\n  enum :status, [:draft, :paid]\nend\n")
+    File.write(model, "class Invoice\n  default_scope { where(active: true) }\n  enum :status, [:draft, :paid]\n  def actor; current_user; end\nend\n")
     specs = File.join(application, "spec")
     FileUtils.mkdir_p(specs)
     File.write(File.join(specs, "invoice_spec.rb"), "RSpec.describe Invoice do\n  it { allow_any_instance_of(Invoice).to receive(:total) }\nend\n")
@@ -80,7 +84,7 @@ Bundler.with_unbundled_env do
     offenses = JSON.parse(stdout).fetch("files").flat_map { |file| file.fetch("offenses") }
     raise "Installed plugin did not report DefaultScope" unless offenses.any? { |o| o.fetch("cop_name") == "TsurakunaiRails/DefaultScope" }
 
-    %w[Rails/EnumHash RSpec/AnyInstance].each do |cop|
+    %w[TsurakunaiRails/ModelRequestContext Rails/EnumHash RSpec/AnyInstance].each do |cop|
       raise "Installed preset did not report #{cop}" unless offenses.any? { |o| o.fetch("cop_name") == cop }
     end
 

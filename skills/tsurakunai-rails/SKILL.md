@@ -1,6 +1,6 @@
 ---
 name: tsurakunai-rails
-description: Implement or review Rails changes using focused RuboCop checks and evidence-based review of authorization, data integrity, side effects, and behavioral tests. Use for Rails application changes, not general Ruby formatting.
+description: Implement or review Rails changes using focused RuboCop checks and evidence-based review of authorization, data integrity, controller/model responsibilities, side effects, and behavioral tests. Use for Rails application changes, not general Ruby formatting.
 ---
 
 # つらくないRails
@@ -11,11 +11,13 @@ description: Implement or review Rails changes using focused RuboCop checks and 
 
 1. 依頼と差分から期待する振る舞いを整理し、対象プロジェクトのルール、Gemfile、RuboCop設定、テスト入口を読む。未コミット変更を保護する。
 2. `rubocop-tsurakunai-rails`が設定されているか確認する。導入済みなら `bundle exec tsurakunai-rails check -- <実際のテストコマンドと引数>` でRuboCopと変更に適したテストを実行する。未導入なら導入手順を案内し、既存のlint・テストを実行する。未導入を検査済みと扱わない。RSpecなら `inherit_gem: rubocop-tsurakunai-rails: config/rspec.yml` に相当する設定の有無も確認し、未導入なら任意の7ルールセットを案内する。未導入のセットを検査済みと扱わず、既存の方針を勝手に上書きしない。
-3. 対象差分と必要な呼び出し元、認可、スキーマ、ジョブ、テストを追う。下記の該当項目を確認する。構文検査は標準15ルール、RSpec向け7ルールの選択セットがある。文脈の判断は以下の12領域から変更に関係するものを選ぶ。
+3. 対象差分と必要な呼び出し元、認可、スキーマ、ジョブ、テストを追う。下記の該当項目を確認する。構文検査は標準16ルール、RSpec向け7ルールの選択セットがある。文脈の判断は以下の16領域から変更に関係するものを選ぶ。
 4. 修正依頼では再現または振る舞いのテストと最小の修正を行い、関連するチェックを再実行する。レビュー依頼では勝手に変更しない。仕様が決められないときは根拠と選択肢を示す。
 5. 完了報告に「実行したコマンドと結果」「意味的レビューの根拠」「未検証・要判断」を分けて記録する。チェックの終了コード0は設計レビューの完了を意味しない。未実行を成功と書かない。
 
 ## 重要な判断を選ぶ
+
+- controller・modelの実装や置き場所を変更する場合は、まず[責務の判断集](references/responsibilities.md)を読む: **S13 controllerの入口と出口、S14 modelの不変条件、S15 複数modelの業務処理、S16 入力・検索・表示の境界**。通常のCRUD・局所的なcallback・純粋なmodelの計算を正当なケースとして扱い、業務条件の重複やHTTPへの暗黙依存、失敗時の不整合があるときに具体的な移動先を検討する。
 
 - DB・model・更新の変更では[データの判断集](references/data.md)を読む: **S03 DB整合性、S04 関連と削除、S05 更新結果・transaction、S07 競合・状態遷移、S08 migrationとdeploy**。
 - controller・job・外部連携・cacheの変更では[境界の判断集](references/boundaries.md)を読む: **S01 認証・認可・テナント、S02 入力・SQL・出力、S06 外部副作用・ジョブ、S11 cache・ログ・秘密**。
