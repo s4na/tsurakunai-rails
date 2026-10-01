@@ -1,4 +1,4 @@
 interface:
   display_name: "つらくないRails"
-  short_description: "日常のRails設計を標準方針・RuboCop・テストで確認"
-  default_prompt: "$tsurakunai-rails を使い、このRails変更を検証し、標準の設計方針と不具合を区別してレビューしてください。"
+  short_description: "Railsの実装・レビュー手順を選ぶ共通の入口"
+  default_prompt: "$tsurakunai-rails を使い、依頼に合う実装またはレビューの手順で進めてください。"

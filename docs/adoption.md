@@ -1,6 +1,6 @@
 # 既存Railsアプリへ導入する
 
-設計方針8ルールと事故防止8ルールが標準で有効になります。Rails Omakase等の別セットは不要です。RSpec7ルールも標準ONです。ERBを使うアプリではERB用の設定と依存を導入し、`check --views`を使います。
+設計方針7ルールと事故防止8ルールが標準で有効になります。Rails Omakase等の別セットは不要です。RSpec7ルールも標準ONです。ERBを使うアプリではERB用の設定と依存を導入し、`check --views`を使います。
 
 ## 最初の確認
 
@@ -22,20 +22,20 @@ RuboCopの既存指摘が大量に出ても、このパッケージの方針と�
 bundle exec rubocop --show-cops Rails/AfterCommitOverride TsurakunaiRails/ControllerCallbacks
 ```
 
-`AfterCommitOverride`と`ControllerCallbacks`はいずれも標準で有効です。既存方針によるoverrideは尊重します。合わないcopは[ルール一覧](rules.md)から選び個別にOFFにできます。
+`AfterCommitOverride`は標準ON、`ControllerCallbacks`の全面禁止は標準OFFです。既存方針によるoverrideは尊重します。合わないcopは[ルール一覧](rules.md)から選び個別にOFFにできます。
 
 ## 以前のバージョンから更新する
 
-以前は設計方針8ルールが初期OFF、RSpec7ルールも別途有効化する方式でした。更新後は認証callback、default_scope、validationを省略する更新などにも指摘が出ます。既存の個別`Enabled: false`は引き続き優先されます。全件を機械的に書き換えず、許可名・対象範囲・個別OFFを選んでください。既存の`config/policies.yml`・`config/rspec.yml`読み込みはそのまま使えます。RSpec未使用アプリにRSpec本体は不要です。
+前版の単一スキルを、実装・レビューの別スキルと共通資料へ分けました。旧名は互換の入口として残ります。ローカル変更を保全し、Gem同梱の3フォルダを一組で比較・更新してください。既存フォルダが一つでもあればinstallerは上書きせず終了します。
 
-スキルも「具体的な不具合だけ」から、日常の設計方針を標準で適用する動作へ変わります。[方針一覧](../skills/tsurakunai-rails/references/daily-design.md)を確認し、導入先のAGENTS.mdやCLAUDE.mdで合わない方針をOFFにできます。インストール済みのスキルは自動更新されないため、ローカル変更を保全してGem同梱版と比較してください。
+設計方針も調査に基づき見直しました。モデルの業務API・局所的callback・明示入力partialを認め、必要な境界だけ抽出します。ControllerCallbacksは標準OFFへ戻しましたが、既存の`config/policies.yml`や個別`Enabled: true`は全面禁止を維持します。他の標準lintと個別OFFは維持しています。
 
 ## 最初の変更で効果を確認する
 
-Codexなら`$tsurakunai-rails この変更をレビューしてください`、Claude Codeなら`/tsurakunai-rails この変更をレビューしてください`と依頼します。以下から、その変更に関係するものだけを判断材料にします。
+Codexなら`$tsurakunai-rails-review この変更をレビューしてください`、Claude Codeなら`/tsurakunai-rails-review この変更をレビューしてください`と依頼します。以下から、その変更に関係するものだけを判断材料にします。
 
-- controllerに計算や業務判断を追加する: HTTP処理から切り離し、値だけで済む計算を純粋にする。
-- 再利用UIを追加する: ViewComponentを選ぶ。静的な短い断片や既存基盤などの例外も確認する。
+- controllerに計算や業務判断を追加する: modelの業務APIや必要なPOROへ置き、HTTP処理と分ける。
+- 再利用UIを追加する: 明示localsのpartialで足りるか、既存component基盤や独立した描画テストに利益があるか確認する。
 - controllerの取得・permitが変わる: 他ユーザー／他tenantのIDで拒否され、DBが変わらないか。
 - modelの保存条件が変わる: 不正入力の保存結果と、必要ならjob等の入口でも不変条件を保つか。
 - validation失敗時のrenderが変わる: errorsと入力値が表示に残るか。

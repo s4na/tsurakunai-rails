@@ -1,4 +1,4 @@
-# Compatibility entry point: these policies are now enabled by default.
+# Legacy strict preset, including the optional blanket callback restriction.
 TsurakunaiRails/ControllerCallbacks:
   Enabled: true
 TsurakunaiRails/DefaultScope:

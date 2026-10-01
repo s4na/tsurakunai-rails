@@ -49,9 +49,10 @@ Bundler.with_unbundled_env do
     acceptance = run!(env, RbConfig.ruby, File.join(root, "script/acceptance.rb"), directory: application)
     puts acceptance
     defaults = YAML.safe_load(run!(env, "bundle", "exec", "rubocop", "--plugin", "rubocop-tsurakunai-rails", "--show-cops", directory: application), permitted_classes: [Regexp, Symbol])
-    %w[ControllerCallbacks DefaultScope ValidationBypass ModelRequestContext].each do |name|
+    %w[DefaultScope ValidationBypass ModelRequestContext].each do |name|
       raise "Missing default policy: #{name}" unless defaults.fetch("TsurakunaiRails/#{name}").fetch("Enabled")
     end
+    raise "Callbacks must be opt-in" if defaults.fetch("TsurakunaiRails/ControllerCallbacks").fetch("Enabled")
     File.write(File.join(application, ".rubocop.yml"), <<~YAML)
       plugins:
         - rubocop-tsurakunai-rails
@@ -78,6 +79,7 @@ Bundler.with_unbundled_env do
       run!(env, "bundle", "exec", "tsurakunai-rails", "install-skill", "--target", target, directory: application)
       folder = target == "codex" ? ".agents" : ".claude"
       installed = File.join(application, folder, "skills", "tsurakunai-rails")
+      puts run!(env, RbConfig.ruby, File.join(root, "script/validate_skill.rb"), File.join(application, folder, "skills"), directory: application)
       %w[review.md responsibilities.md views.md daily-design.md].each do |reference|
         raise "Missing installed skill reference: #{reference}" unless File.file?(File.join(installed, "references", reference))
       end

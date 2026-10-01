@@ -7,7 +7,7 @@ require_relative "version"
 module Tsurakunai
   module Rails
     class CLI
-      SKILL_NAME = "tsurakunai-rails"
+      SKILL_NAMES = %w[tsurakunai-rails tsurakunai-rails-implement tsurakunai-rails-review].freeze
       ROOT = File.expand_path("../../..", __dir__)
 
       def self.run(arguments)
@@ -45,12 +45,17 @@ module Tsurakunai
         project = File.realpath(options[:project])
         directory = options[:target] == "codex" ? ".agents" : ".claude"
         parent = File.join(project, directory, "skills")
-        destination = File.join(parent, SKILL_NAME)
-        raise ArgumentError, "Already exists: #{destination}; review changes before replacing it" if File.exist?(destination) || File.symlink?(destination)
+        destinations = SKILL_NAMES.map { |name| File.join(parent, name) }
+        # Check every member before writing: the skills share packaged references.
+        destinations.each do |destination|
+          raise ArgumentError, "Already exists: #{destination}; review changes before replacing the skill set" if File.exist?(destination) || File.symlink?(destination)
+        end
 
         FileUtils.mkdir_p(parent)
-        FileUtils.cp_r(File.join(ROOT, "skills", SKILL_NAME), destination)
-        puts "Installed #{VERSION}: #{destination}"
+        SKILL_NAMES.zip(destinations).each do |name, destination|
+          FileUtils.cp_r(File.join(ROOT, "skills", name), destination)
+          puts "Installed #{VERSION}: #{destination}"
+        end
         0
       end
 
@@ -100,7 +105,7 @@ module Tsurakunai
         views_ok = views ? check_views : true
         puts "View lint: SKIPPED (use --views with an installed profile)" unless views
         test_ok = run_check_command("Tests", [arguments.first, arguments.first], *arguments.drop(1))
-        puts "Design review still required: invoke the tsurakunai-rails skill and record evidence."
+        puts "Design review still required: invoke the tsurakunai-rails-review skill and record evidence."
         lint_ok && views_ok && test_ok ? 0 : 1
       end
 

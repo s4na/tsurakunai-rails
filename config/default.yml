@@ -47,8 +47,8 @@ Rails/UnusedRenderContent:
   AutoCorrect: false
 
 TsurakunaiRails/ControllerCallbacks:
-  Description: Make controller execution order explicit.
-  Enabled: true
+  Description: Optional blanket callback policy; review hidden business flows contextually.
+  Enabled: false
   VersionAdded: '0.1'
   AllowedMethods: []
   Include:

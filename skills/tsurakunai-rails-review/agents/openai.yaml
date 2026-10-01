@@ -1,0 +1,4 @@
+interface:
+  display_name: "つらくないRails レビュー"
+  short_description: "境界・状態・副作用が崩れる経路を根拠付きで確認する"
+  default_prompt: "$tsurakunai-rails-review を使い、このRails変更を編集せずレビューしてください。"

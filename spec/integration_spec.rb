@@ -40,7 +40,6 @@ RSpec.describe "RuboCop plugin integration" do
       report = JSON.parse(stdout)
       offenses = report.fetch("files").flat_map { |file| file.fetch("offenses") }
       expect(offenses.map { |offense| offense.fetch("cop_name") }.tally).to eq(
-        "TsurakunaiRails/ControllerCallbacks" => 2,
         "TsurakunaiRails/ModelRequestContext" => 1,
         "TsurakunaiRails/DefaultScope" => 1,
         "TsurakunaiRails/ValidationBypass" => 1
@@ -48,13 +47,13 @@ RSpec.describe "RuboCop plugin integration" do
       expect(offenses).to all(include("correctable" => false))
       sources.each { |name, source| expect(File.read(File.join(project, name))).to eq(source) }
       File.open(File.join(project, ".rubocop.yml"), "a") do |file|
-        file.write("\nTsurakunaiRails/ControllerCallbacks:\n  Enabled: false\n")
+        file.write("\nTsurakunaiRails/DefaultScope:\n  Enabled: false\n")
       end
       stdout, stderr, status = run_cop(project)
       expect(status.exitstatus).to eq(1), stderr
       remaining = JSON.parse(stdout).fetch("files").flat_map { |file| file.fetch("offenses") }
       expect(remaining.map { |offense| offense.fetch("cop_name") }.uniq).to match_array(
-        %w[TsurakunaiRails/ModelRequestContext TsurakunaiRails/DefaultScope TsurakunaiRails/ValidationBypass]
+        %w[TsurakunaiRails/ModelRequestContext TsurakunaiRails/ValidationBypass]
       )
     end
   end

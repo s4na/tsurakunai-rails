@@ -13,7 +13,7 @@ bundle exec ruby script/acceptance.rb
 
 [検証アプリ](../spec/fixtures/acceptance_app)は本物のAction ControllerのRackリクエスト、Active Recordの保存・commit callback、Action ViewのERB描画を使います。認証済みaccountはテスト専用のRack環境から渡し、認証ライブラリや本番のログイン基盤を再実装しません。
 
-正常なアプリは6契約・40 assertionで、未認証拒否、tenantの境界、validation失敗、成功時の更新、requestなしのmodel操作、一覧の表示を検証します。通常の認証callback、短いCRUD、model validation、トップレベルviewのinstance variableを許容しています。設計方針と事故防止の標準16ルールを使用し、認証callbackは`AllowedMethods`で明示的に許可しています。書式はこの検証の対象から外しています。
+正常なアプリは6契約・40 assertionで、未認証拒否、tenantの境界、validation失敗、成功時の更新、requestなしのmodel操作、一覧の表示を検証します。通常の認証callback、短いCRUD、model validation、トップレベルviewのinstance variableを許容しています。設計方針と事故防止の標準15ルールを使用します。callback全面禁止は標準OFFで、通常の認証callbackを保ったまま認可と結果を検証します。書式はこの検証の対象から外しています。
 
 一度に1箇所を壊し、対応する契約テストが「エラーではなくassertion失敗」で検出すること、公開CLIが1を返すことを確認します。各ケース後に元へ戻します。
 

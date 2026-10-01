@@ -1,75 +1,56 @@
-# 日常の設計方針
+# 共通の設計判断
 
-このスキルは以下を標準で適用します。不具合の証明を待たず、新規・変更コードが方針から外れる場合は設計上の指摘を行います。バグとは区別し、該当する処理・推奨する置き場所・例外に当たるかを説明してください。変更していないコードの一括改修は行いません。
+実装は「どのように作るか」、レビューは「その形が崩れる経路」を見る。同じ判断を使うため、この参照先を共有します。ここでいうハードな検査は、禁止・問題状態のうち機械で判定できる構文をlintにしたものです。すべての設計判断を自動化したという意味ではありません。
 
-## 方針を個別に外す
+## 基本の流れ
 
-導入先のAGENTS.mdやCLAUDE.mdに、下の方針名と適用範囲を書けば、その範囲ではOFFにします。既存の明示的なプロジェクト規約が優先です。理由はチームで判断するための補足で、OFFにするための審査条件ではありません。
+利用者の操作 → controller/jobの入口 → modelの業務API → 必要な協力オブジェクト → 保存結果・応答、の順に追える形を基本にします。単純なCRUDはcontroller→modelのままにします。POROやserviceを経由すること自体を目的にしません。
 
-```markdown
-## つらくないRailsの設計方針
-- ViewComponent優先: OFF（管理画面。既存のpartial構成を維持する）
-- 純粋な計算: OFF（外部ライブラリが状態を持つAPIを要求する箇所）
-```
+| どう作るか | レビューで避ける状態 | 機械で分かる範囲 |
+| --- | --- | --- |
+| actor・対象scope・許可属性を入口で決める | 別tenantの対象取得、別入口で認可を迂回する | 認可の正しさはlintだけでは分からない |
+| modelの業務名APIで不変条件と状態遷移を守る | HTTP層だけに条件があり、直接保存やjobで抜ける | enum値・保存APIなどの構文だけ |
+| 一緒に成功する更新と失敗時の応答を決める | 一部だけcommit、保存失敗を成功扱いする | SaveBangは戻り値無視の一部を検出 |
+| lifecycleの局所処理と操作固有の手順を分ける | callback順序に複雑な業務や外部副作用が隠れる | callbackの複雑さは判定しない。全面禁止copは任意 |
+| scopeを合成し、必要な検索だけFinderへ分ける | 多機能Finderの流用で権限・件数・条件が変わる | query数や適切な抽象化は文脈と実測で確認 |
+| 明示入力のpartialやcomponentで描画を組み立てる | 入力の食い違い、隠れた追加query、描画時の更新 | ERB入力lintは直接の変数参照を補助検出 |
+| 独立計算には必要な値を渡し、結果を返す | 時刻・金額・共有状態への依存で結果が変わる | 独立性や丸めの正しさはテストで確認 |
+| 外部I/Oの失敗・再実行・commitを扱う | rollback済みの通知、timeout後の二重処理 | 配信保証や冪等性は静的には保証しない |
+| 公開結果を速いmodel/HTTP境界のテストで確認する | stubやUIテストだけで重要な状態を見逃す | RSpecの期待・double等の形式を補助検査 |
 
-これはAIが読む指示で、CLIが解析する設定ではありません。RuboCopの有効・無効とは独立しています。lintをOFFにする場合は`.rubocop.yml`の該当copに`Enabled: false`を指定します。lintを無効にしただけで、別の設計方針までOFFになったと推測しません。スキルへの今回だけの指示でも対象方針を外せます。
+## 責務を分ける目安
 
-## コントローラーはHTTP処理に限定
+モデルは属性だけの箱ではありません。レコードや自然な集約が守る条件、状態遷移、短い問い合わせをモデルの公開APIに置きます。関係する複数行を更新するだけでserviceへ移す必要はありません。
 
-- 認証・認可、入力の取り出し、対象取得、業務操作の呼び出し、応答を扱います。料金計算、割引・承認の業務分岐、複数モデルの更新手順は置きません。privateメソッドやcontroller concernへ移すだけでは分離になりません。
-- 業務処理は名前の付いたPORO（通常のRubyオブジェクト）へ、単一レコードの不変条件はモデルへ置きます。POROへparams・session・controller自体を渡さず、必要な値とactorを渡します。
-- 単純なCRUD、保存結果によるrender/redirect分岐、HTML/JSONの応答分岐はそのままで構いません。1回のsaveを転送するだけのクラスは作りません。
-- RuboCopは業務分岐かHTTP分岐かを判別しません。AIが処理内容と呼び出し元を確認します。
+独立した計算、外部通信、複数集約を調整する操作は、理解しやすくなる場合に名前付きPOROへ分けます。モデル配下の協力オブジェクトでも構いません。計算がモデルの値の意味を表すなら、そのメソッドやvalue objectに残せます。関数形式やクラス数を強制しません。
 
-## モデルから独立した業務処理はPOROへ
+Concernはdomain traitとしてまとまる処理に使えます。行数を減らすだけの任意の寄せ集めにしません。薄い委譲だけのService基底クラス、共通result framework、同じ形に揃えるための層は増やしません。名前は仕事を説明する業務語を選び、接尾辞だけで判定しません。
 
-- モデルは永続化、関連、validation、scope、そのレコードで守る状態遷移を担当します。見積計算、帳票生成、複数モデルや外部APIをまとめる手順は、独立して呼び出し・テストできるPOROへ切り出します。重複や巨大化を待つ必要はありません。
-- 全モデルメソッドを移す方針ではありません。レコード自身の整合性を保つ操作や短い状態の問い合わせはモデルに残します。切り出し後もvalidation・認可・transactionを迂回しないでください。
-- 共通のService基底クラスやresult frameworkは必須にしません。`ApproveInvoice`など操作の分かる普通のクラスで十分です。
+## callback・Current・表示
 
-## 純粋な計算
+認証hook、単純な正規化、lifecycle付随処理などはcallbackの正当な用途です。操作固有の複雑な更新・外部I/Oは明示APIから追える形を選びます。Currentを使う場合も、request外の初期化・解除・権限の前提を確認し、存在だけで欠陥にしません。
 
-- 値を受け取り値を返せる計算・変換は、DB・ネットワーク・現在時刻・乱数・共有状態に依存させません。必要な時刻、税率、為替などは呼び出し側から渡します。引数の配列やモデルを書き換えず結果を返します。
-- 状態が不要ならmoduleのメソッドや小さな関数で済ませ、不要なオブジェクト生成や継承を増やしません。状態を持つことが仕事のモデルやI/O操作まで純粋関数に見せかけません。
-- 例: `Price.total(lines:, tax_rate:)`で計算し、取得・保存は呼び出し側で行います。実際の切り出しでは金額の型と丸めを保ちます。
+partialを禁止せず、必要な入力をlocalsで渡します。UIの振る舞い、再利用、独立した描画テストに利益があるときに既存component基盤やViewComponentを選びます。partialというだけで遅い、componentにすればN+1が消えるとは扱いません。
 
-## ViewComponent優先
+本パッケージでは、複雑な取得条件・先読み・ページングを表示処理から追いやすい境界へ寄せることを推奨します。これは採用方針であり、37signalsがview内のscopeやCurrentを禁止しているという主張ではありません。遅延評価のSQLや既存helperの呼び出しだけで違反にしません。
 
-- 新しく作る再利用UIはpartialよりViewComponentを選びます。特に条件分岐、表示用計算、複数の引数、helper依存を持つ表示は、入力と描画テストをcomponentにまとめます。
-- 静的な短い断片、layout、Railsのform builder、既存の別component基盤は例外です。変更しないpartialを一括変換しません。既存partialへ表示責務を追加する変更では移行を検討し、変更範囲に対して大きすぎる場合はその理由を示します。
-- ViewComponent未導入なら必要な依存・Rails/Ruby互換性を説明し、依頼範囲や承認なしに追加しません。導入できない場合はpartialの入力をlocalsで明示する代案と、方針を満たせていない点を報告します。
-- partialというだけで遅いとは判断しません。ViewComponentもDBアクセスやN+1を自動解消しません。既存ERB lintは入力だけを検査し、component採用の判定や変換はしません。
+## 導入先に合わせる
 
-## クエリと描画を分離
+これらを標準の判断として使い、導入先の明示的な規約と今回の依頼範囲を優先します。例えばAGENTS.mdやCLAUDE.mdに「この画面は既存ViewComponentを使用」「このAPIは既存service境界を維持」と書けば、その前提で実装・レビューします。方針をOFFにする指示も尊重し、理由の報告書を条件にしません。
 
-- 取得scope、絞り込み、並び順、ページング、関連の先読みはcontrollerまたはquery objectで決めます。view・component・helperの中で検索や保存、外部通信を隠しません。
-- 再利用する複雑な検索はquery objectへ分離し、権限を適用したrelationやactorを明示します。単純なscopeや1回のfindのためにクラスを増やしません。
-- relationの遅延評価で描画時にSQLが走るだけでは違反にしません。問題は取得条件が表示処理に隠れることや、行ごとの追加queryです。必要な関連だけを先読みし、無条件に全関連をpreloadしません。
+lintの個別OFFは`.rubocop.yml`の`Enabled: false`、許可名・対象範囲で指定します。AI向け規約とは独立しています。`ControllerCallbacks`は標準OFFで、全面禁止を選ぶプロジェクトだけ有効にできます。旧`config/policies.yml`はその厳格な方針を含む互換presetです。
 
-## 外部処理と重い処理を明示
+前版の「モデル外への一律分離」「再利用UIはViewComponent優先」「callback全面禁止」は置き換えました。既存の個別OFFは再有効化しません。変更していない領域の一括改修、未承認の依存追加、公開・デプロイは行いません。
 
-- メール、決済、外部API、job投入をvalidationや表示処理へ隠しません。複数更新のtransaction境界と、外部処理の失敗・再実行時の扱いを操作の入口から追えるようにします。
-- 件数が増える一覧・CSV・バッチで全件をメモリへ載せず、ページングや分割処理を選びます。応答を待たせる重い処理はjob化を検討しますが、即時結果が必要な処理まで非同期にしません。
-- 性能の不具合と断定するときは件数、query数、実行時間などの根拠を示します。計測なしにindex、cache、queue、outboxを一律導入しません。再実行・失敗通知・運用の複雑さも比較します。
+## 調査から採用したこと
 
-## 名前で仕事と副作用を示す
+以下は2026-10-01の一次資料調査です。実在するコード、各組織の規約、本パッケージでの採用判断を区別します。GitLabの全体構造や37signalsの好みを、そのまま小さなチームへ持ち込みません。
 
-- 新しい業務クラス・メソッドは対象と仕事が分かる名前にします。`InvoiceManager#process`や`Utils#handle`のような名前ではなく、承認・見積・検索など実際の操作を示します。曖昧な名前には、その実装に合う具体的な代案を提示します。
-- 真偽の問い合わせは`?`、破壊的操作や例外を使うAPIは既存のRuby/Rails規約との整合を確認します。独自の`!`を付けるだけで保存結果の確認を済ませません。
-- Railsのaction、外部API、既存の公開インターフェースに決まった名前があれば維持します。単語の好みやServiceという接尾辞だけを理由に変更しません。
+- **GitLabの実コード**: [WebHookの入口](https://github.com/gitlabhq/gitlabhq/blob/6b223d291c2b94388709a3fdce10747c13ade7ed/app/controllers/concerns/web_hooks/hook_actions.rb)はcreateにservice、updateに直接のmodel更新を使う。[Label](https://github.com/gitlabhq/gitlabhq/blob/6b223d291c2b94388709a3fdce10747c13ade7ed/app/models/label.rb)は親整合性や削除条件をmodelで扱う。したがって「すべてservice」「modelはデータだけ」とは読まない
+- **GitLabの取得と描画**: [LabelsPreloader](https://github.com/gitlabhq/gitlabhq/blob/6b223d291c2b94388709a3fdce10747c13ade7ed/app/models/preloaders/labels_preloader.rb)と[テスト](https://github.com/gitlabhq/gitlabhq/blob/6b223d291c2b94388709a3fdce10747c13ade7ed/spec/models/preloaders/labels_preloader_spec.rb)は関連・権限の一括取得とquery数を扱う。[一覧](https://github.com/gitlabhq/gitlabhq/blob/6b223d291c2b94388709a3fdce10747c13ade7ed/app/views/projects/labels/index.html.haml)はComponentとpartialを併用する。採用するのは取得量と入力契約の明示で、特定のUI方式の全面強制ではない
+- **GitLabの規約と実装の差**: [抽象化の再利用](https://github.com/gitlabhq/gitlabhq/blob/6b223d291c2b94388709a3fdce10747c13ade7ed/doc/development/reusing_abstractions.md)は、多機能なFinder等の流用が余分な条件や性能負担を持ち込む例を説明する。大規模組織向けの階層・共通service規約は丸写しせず、低水準のscope等を適切に合成する判断を採る
+- **37signalsのdomain model**: [Vanilla Rails is plenty](https://dev.37signals.com/vanilla-rails-is-plenty/)はARとPOROを含むdomain modelの公開APIを重視する。[Good concerns](https://dev.37signals.com/good-concerns/)ではdomain traitのConcernと協力POROを併用する。採用するのは凝集性で、Concernかcompositionかの一律選択ではない
+- **37signalsのcallback**: [Globals, callbacks and other sacrileges](https://dev.37signals.com/globals-callbacks-and-other-sacrileges/)は単純なlifecycle付随処理を認め、複雑なflowを区別する。callbackやCurrentの存在をhard lintで不具合と確定しない
+- **Fizzyの公開実装**: [STYLE](https://github.com/basecamp/fizzy/blob/a703bf1de29ab9cc56672f125f25b14f47418f7b/STYLE.md)、[ClosuresController](https://github.com/basecamp/fizzy/blob/a703bf1de29ab9cc56672f125f25b14f47418f7b/app/controllers/cards/closures_controller.rb)、[Card::Closeable](https://github.com/basecamp/fizzy/blob/a703bf1de29ab9cc56672f125f25b14f47418f7b/app/models/card/closeable.rb)はcontroller→model操作とtransactionを示す。一方[メッセージpartial](https://github.com/basecamp/fizzy/blob/a703bf1de29ab9cc56672f125f25b14f47418f7b/app/views/cards/_messages.html.erb)は関連scopeやCurrentも使う。これを「view内DB参照禁止」の根拠にはしない。Fizzyは確認時点のcommitを固定している
 
-## 評価する例
-
-| 変更 | 判断 |
-| --- | --- |
-| controllerに割引計算を追加 | 動作していても設計方針として計算の分離を提案 |
-| controllerでupdate結果から422を返す | HTTP処理なので許容 |
-| modelに複数商品の見積計算を追加 | POROへ分離し、値だけで済む部分は純粋な計算にする |
-| modelに在庫の状態遷移を追加 | レコードの不変条件を保つ操作は残す |
-| 新規の再利用カードに分岐とhelper依存を追加 | ViewComponentを推奨。単なる速度改善とは説明しない |
-| 静的な短いpartialを追加 | 明示された例外として許容 |
-| ViewComponent優先をOFFにした画面 | componentへの移行を要求せず、描画の正しさを確認 |
-| 日付計算でTime.currentを内部取得 | 時刻を引数にし、日付境界をテストできる形へ |
-| 外部APIの固定名processを実装 | 命名規約の例外として維持 |
-
-この表は人やAIが判断を評価するための例です。CLIやCIがこれらの設計判断を自動実行するわけではありません。
+この調査は、各社の全コードが同じ規約を守ることや、この方針による性能改善・開発時間削減を実証したものではありません。
