@@ -1,0 +1,21 @@
+plugins:
+  - rubocop-tsurakunai-rails
+
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - vendor/**/*
+    - pkg/**/*
+    - spec/fixtures/**/*
+
+# The repository checks correctness, not personal formatting preferences.
+Style:
+  Enabled: false
+Layout:
+  Enabled: false
+Metrics:
+  Enabled: false
+Naming:
+  Enabled: false

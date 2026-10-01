@@ -1,0 +1,22 @@
+TsurakunaiRails/ControllerCallbacks:
+  Description: Make controller execution order explicit.
+  Enabled: true
+  VersionAdded: '0.1'
+  AllowedMethods: []
+  Include:
+    - '**/app/controllers/**/*.rb'
+    - '**/app/controllers/concerns/**/*.rb'
+
+TsurakunaiRails/DefaultScope:
+  Description: Make query filtering and creation defaults explicit.
+  Enabled: true
+  VersionAdded: '0.1'
+  Include:
+    - '**/app/models/**/*.rb'
+
+TsurakunaiRails/ValidationBypass:
+  Description: Review writes which explicitly skip validation.
+  Enabled: true
+  VersionAdded: '0.1'
+  Include:
+    - '**/app/models/**/*.rb'
