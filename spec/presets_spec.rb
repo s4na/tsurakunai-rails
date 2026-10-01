@@ -42,7 +42,7 @@ RSpec.describe "Focused upstream rules through the public plugin" do
           - rubocop-tsurakunai-rails
         AllCops:
           NewCops: enable
-          TargetRubyVersion: 3.2
+          TargetRubyVersion: 3.0
           TargetRailsVersion: 7.1
           SuggestExtensions: false
       YAML

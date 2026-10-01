@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.description = "RuboCop checks for hidden control flow and persistence, plus an installable Rails review skill."
   spec.homepage = "https://github.com/s4na/tsurakunai-rails"
   spec.license = "MIT"
-  spec.required_ruby_version = ">= 3.2"
+  spec.required_ruby_version = ">= 3.0"
   spec.metadata = {
     "source_code_uri" => spec.homepage,
     "bug_tracker_uri" => "#{spec.homepage}/issues",
@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
   spec.executables = ["tsurakunai-rails"]
   spec.require_paths = ["lib"]
   spec.add_dependency "lint_roller", "~> 1.1"
-  spec.add_dependency "rubocop", ">= 1.72.1", "< 2.0"
+  spec.add_dependency "rubocop", ">= 1.74.0", "< 2.0"
   spec.add_dependency "rubocop-rails", ">= 2.30", "< 3.0"
   spec.add_dependency "rubocop-rspec", ">= 3.4", "< 4.0"
 end
