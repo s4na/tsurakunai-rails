@@ -40,7 +40,7 @@ RSpec.describe "View input guardrails" do
     end
   end
 
-  it "requires a signature only in the strict profile and accepts Rails block helpers and collection locals" do
+  it "requires a signature only in the strict profile and accepts Rails block helpers" do
     with_views do |project, views|
       partial = File.join(views, "_invoice.html.erb")
       content = "<%= form_with model: invoice do |form| %>\n<%= form.text_field :number %>\n<% end %>\n"
@@ -70,9 +70,7 @@ RSpec.describe "View input guardrails" do
   it "detects variables inside incomplete block fragments and interpolation with Unicode locations" do
     with_views do |project, views|
       # Literal template interpolation must be evaluated by Action View, not this test.
-      # rubocop:disable Lint/InterpolationCheck
-      File.write(File.join(views, "_invoice.html.erb"), '<% if @can_edit %><%= "請求 #{@invoice.number}" %><% end %>')
-      # rubocop:enable Lint/InterpolationCheck
+      File.write(File.join(views, "_invoice.html.erb"), "<% if @can_edit %><%= \"請求 \#{@invoice.number}\" %><% end %>")
       stdout, stderr, status = lint(project, "erb_lint.yml")
       expect(status.exitstatus).to eq(1), stderr
       expect(stdout).to include("@can_edit", "@invoice")
@@ -103,6 +101,9 @@ RSpec.describe "View input guardrails" do
       expect(rendered).to include("INV-1")
       expect(rendered).not_to include("INV-2", "編集")
       expect(view.render(partial: "invoices/invoice", locals: { invoice: other, can_edit: true })).to include("INV-2", "編集")
+      collection = view.render(partial: "invoices/invoice", collection: [invoice, other], as: :invoice, locals: { can_edit: false })
+      expect(collection).to include("INV-1", "INV-2")
+      expect(collection).not_to include("編集")
       expect { view.render(partial: "invoices/invoice", locals: {}) }.to raise_error(ActionView::Template::Error, /missing local|missing keyword/)
       expect { view.render(partial: "invoices/invoice", locals: { invoice: invoice, typo: true }) }.to raise_error(ActionView::Template::Error, /unknown local|unknown keyword/)
     end
