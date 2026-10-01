@@ -7,6 +7,7 @@ require "fileutils"
 require "open3"
 require "json"
 require "rbconfig"
+require "yaml"
 
 root = File.expand_path("..", __dir__)
 
@@ -38,6 +39,12 @@ Bundler.with_unbundled_env do
       gem "erb_lint", "~> 0.9", require: false
       gem "rubocop", "#{ENV.fetch('RUBOCOP_VERSION', '>= 1.72.1')}"
     RUBY
+    # Assert the installed default accepts Rails conventions before opting in.
+    run!(env, "bundle", "lock", "--local", directory: application)
+    defaults = YAML.safe_load(run!(env, "bundle", "exec", "rubocop", "--plugin", "rubocop-tsurakunai-rails", "--show-cops", directory: application), permitted_classes: [Regexp, Symbol])
+    %w[ControllerCallbacks DefaultScope ValidationBypass ModelRequestContext].each do |name|
+      raise "Unexpected default policy: #{name}" if defaults.fetch("TsurakunaiRails/#{name}").fetch("Enabled")
+    end
     File.write(File.join(application, ".rubocop.yml"), <<~YAML)
       plugins:
         - rubocop-tsurakunai-rails

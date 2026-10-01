@@ -27,17 +27,17 @@ Rails/EnumUniqueness:
   Enabled: true
   AutoCorrect: false
 Rails/EnumHash:
-  Enabled: true
+  Enabled: false
   AutoCorrect: false
 Rails/SaveBang:
-  Enabled: true
+  Enabled: false
   AutoCorrect: false
   AllowImplicitReturn: true
 Rails/HasManyOrHasOneDependent:
-  Enabled: true
+  Enabled: false
   AutoCorrect: false
 Rails/UniqueValidationWithoutIndex:
-  Enabled: true
+  Enabled: false
   AutoCorrect: false
 Rails/UnusedRenderContent:
   Enabled: true
@@ -45,7 +45,7 @@ Rails/UnusedRenderContent:
 
 TsurakunaiRails/ControllerCallbacks:
   Description: Make controller execution order explicit.
-  Enabled: true
+  Enabled: false
   VersionAdded: '0.1'
   AllowedMethods: []
   Include:
@@ -54,21 +54,21 @@ TsurakunaiRails/ControllerCallbacks:
 
 TsurakunaiRails/DefaultScope:
   Description: Make query filtering and creation defaults explicit.
-  Enabled: true
+  Enabled: false
   VersionAdded: '0.1'
   Include:
     - '**/app/models/**/*.rb'
 
 TsurakunaiRails/ValidationBypass:
   Description: Review writes which explicitly skip validation.
-  Enabled: true
+  Enabled: false
   VersionAdded: '0.1'
   Include:
     - '**/app/models/**/*.rb'
 
 TsurakunaiRails/ModelRequestContext:
   Description: Keep HTTP request context out of persistence and business behavior.
-  Enabled: true
+  Enabled: false
   VersionAdded: '0.1'
   AllowedMethods: []
   Include:

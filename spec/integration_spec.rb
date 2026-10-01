@@ -11,7 +11,7 @@ RSpec.describe "RuboCop plugin integration" do
                   "--only", "TsurakunaiRails", "--format", "json", "--cache", "false", project, *args)
   end
 
-  it "loads plugin defaults, respects paths and scoped exceptions, and never autocorrects" do
+  it "accepts ordinary Rails patterns by default and checks opted-in policies without autocorrection" do
     Dir.mktmpdir do |project|
       File.write(File.join(project, ".rubocop.yml"), <<~YAML)
         plugins:
@@ -33,6 +33,12 @@ RSpec.describe "RuboCop plugin integration" do
         path = File.join(project, name)
         FileUtils.mkdir_p(File.dirname(path))
         File.write(path, source)
+      end
+      stdout, stderr, status = run_cop(project)
+      expect(status.exitstatus).to eq(0), stderr
+      expect(JSON.parse(stdout).fetch("files").flat_map { |file| file.fetch("offenses") }).to be_empty
+      File.open(File.join(project, ".rubocop.yml"), "a") do |file|
+        file.write("\ninherit_gem:\n  rubocop-tsurakunai-rails: config/policies.yml\n")
       end
       stdout, stderr, status = run_cop(project, "--autocorrect")
       expect(stderr).not_to include("unrecognized", "Error:")

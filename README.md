@@ -1,8 +1,8 @@
 # つらくないRails
 
-Railsの「分かっている人がうまく使う」を、チームとAIでも再現するための小さなハーネスです。標準16ルール・RSpec向け7ルールで重要な構文上の問題を **RuboCop**、業務の文脈が必要な問題を **Codex / Claude Code向けスキル**、実際の振る舞いを **アプリのテスト**で確認します。
+Railsの「分かっている人がうまく使う」を、チームとAIでも再現するための小さなハーネスです。標準8ルールと任意の設計方針・RSpecセットで重要な構文上の問題を **RuboCop**、業務の文脈が必要な問題を **Codex / Claude Code向けスキル**、実際の振る舞いを **アプリのテスト**で確認します。
 
-書式やメソッドの長さの好みを増やすパッケージではありません。指摘数より、認可漏れ、見えない状態変更、データ破損などの事故を減らすことを優先します。ルールはRails公式の禁止事項ではなく、明示的な実行順序を重視するチーム向けの方針です。
+書式やメソッドの長さの好みを増やすパッケージではありません。指摘数より、認可漏れ、見えない状態変更、データ破損などの事故を減らすことを優先します。標準は構文上の事故に絞り、callback禁止やモデルのHTTP依存検出などの設計方針は初期無効です。スキルも具体的な失敗の根拠がある場合に指摘します。
 
 ## 導入（Gem + スキル）
 
@@ -60,9 +60,21 @@ CIには同じ `check -- <テストコマンド>` を置き、PRレビューに�
 
 [ルール一覧](docs/rules.md)に、copごとの採用理由・改善の方向・正当な例外・静的検査の限界をまとめています。
 
-- **標準16ルール**: 独自4ルールにRuboCop Railsの重要な12ルールを組み合わせます。callback・暗黙scope・validation迂回・modelのHTTP依存に加え、永続化APIの上書き、関連・commit hookの重複、enumの値、更新失敗、関連削除、一意index、migrationと応答の事故を扱います。pluginの読み込みだけで上流pluginも読み込みます。
+- **標準8ルール**: 永続化APIの上書き、関連・commit hookの重複、enum値の重複、効かないindex指定、危険なcolumn名、NOT NULL追加、失われる応答bodyを扱います。
+- **任意の設計方針8ルール**: 独自4 cop（callback・default scope・validation迂回・特定名のmodel呼び出し）と、enum表現・保存API・関連削除・一意indexの4 cop。コードの文脈によって正当な使い方があるため初期無効です。必要なものだけ選んで有効にします。
 - **RSpec7ルール**: 全instanceのstub、message chain、検査対象のstub、契約を検証しないdouble、種類を指定しない例外assert、setupの上書き、matcherのないexpectを扱います。RSpec以外のプロジェクトへ要求しません。
 - **意味的レビュー18領域**: 認可、入力・SQL・出力、DB整合性、削除、更新結果、外部副作用・job、競合、migration、query、時刻・金額、cache・秘密、テスト、controller/modelの責務、複数modelの処理、入力・検索・表示の境界、view/partialの入力、描画の取得と副作用。悪い例・改善案・例外・検証方法を[スキル](skills/tsurakunai-rails/SKILL.md)から必要に応じて読みます。
+
+方針の採用例（callbackを使わない規約をチームで選んだ場合だけ）:
+
+```yaml
+TsurakunaiRails/ControllerCallbacks:
+  Enabled: true
+  AllowedMethods:
+    - authenticate_user!
+```
+
+全8方針を採用すると決めた場合は `config/policies.yml` を `inherit_gem` で読み込めます。RSpecセットと両方を使う場合は、同じGemの配列へ `config/policies.yml` と `config/rspec.yml` を指定します。全方針の導入は必須ではありません。
 
 RSpecセットを使う場合は次を追加します。必要な上流GemもこのGemの依存として導入されます。
 
@@ -84,27 +96,28 @@ inherit_gem:
 - 複数modelの手順とtransactionは、自然な集約または意味のある操作object等へ明示する。
 - 画面固有の入力、複雑な検索、表示の整形は、必要性に応じてform/query/presenter等の境界へ分ける。
 
-「全controllerをserviceへ」「modelは属性だけ」「行数が多いから分割」では判断しません。業務条件の重複、HTTPの暗黙の状態への依存、失敗時の不整合などの具体的な負担を根拠にします。構文だけで検出できるmodel内のHTTP helper呼び出しは `TsurakunaiRails/ModelRequestContext` が扱います。
+「全controllerをserviceへ」「modelは属性だけ」「行数が多いから分割」では判断しません。業務条件の重複、HTTPの暗黙の状態への依存、失敗時の不整合などの具体的な負担を根拠にします。任意の `TsurakunaiRails/ModelRequestContext` はmodel内の特定名の呼び出しを検出し、実際のHTTP依存かどうかは文脈で判断します。
 
 ## ビューの変数とpartial
 
-partialの入力を毎回レビューで探す負担を減らすため、[ERB Lint設定と導入手順](docs/view-inputs.md)も同梱しています。`install-view-lint --strict-locals` と `check --views -- <テストコマンド>` で、対応環境では暗黙の入力・宣言漏れを検出し、実際の描画で渡し忘れを拒否できます。
+複数入口の表示対象の食い違い等を解消する選択肢として、[ERB Lint設定と導入手順](docs/view-inputs.md)も同梱しています。`install-view-lint --strict-locals` と `check --views -- <テストコマンド>` で、対応環境では暗黙の入力・宣言漏れを検出し、実際の描画で渡し忘れを拒否できます。
 
 [ビューの判断集](skills/tsurakunai-rails/references/views.md)で、トップレベルviewのinstance variable、partialへのlocals、必須・任意入力、validation失敗時のform、helper内部のquery・副作用を扱います。再利用partialの暗黙依存を整理し、通常のRailsのviewまで一律に禁止しません。認可はボタンの表示だけで終えず、更新actionでも保証します。ERBはRuboCopとは別のERB Lintで検査し、文脈が必要な部分はスキルと実際の描画テストで確認します。
 
 ## 例外と段階導入
 
-認証ライブラリなどで必要なcallbackは、その用途を確認して対象を絞って許可できます。
+標準設定では認証・ロード等のcallbackを使うだけで指摘しません。callback禁止の方針を明示採用した場合は、必要なcallbackを許可できます。
 
 ```yaml
 TsurakunaiRails/ControllerCallbacks:
+  Enabled: true
   AllowedMethods:
     - authenticate_user! # 認証基盤の必須hook。request testで未認証拒否を検証。
 ```
 
 複数のcallbackを同時登録した場合、すべてが許可名でなければ検出します。ブロック・動的な登録は許可名で見逃しません。認証の明示呼び出しへの移行では、redirect後の停止と全actionの認可を必ず確認してください。
 
-個別の保守処理では理由と代替保証をコメントし、該当行または狭い範囲だけ `rubocop:disable` を使えます。既存アプリでは最初に `--only TsurakunaiRails` で棚卸しし、機械的に全件置換せず、変更する機能から認可・状態のテストを追加します。変更しない既存領域を一時的に `Exclude` する場合は担当と解消条件を記録します。全体無効化や大量のtodo生成を初手にしません。
+個別の保守処理では理由と代替保証をコメントし、該当行または狭い範囲だけ `rubocop:disable` を使えます。既存アプリでは標準設定から始め、必要な方針だけを選びます。選んでいない方針のために例外を記録する必要はありません。機械的な全件置換は行わず、具体的な問題に関係する機能を最小限に修正・検証します。
 
 ## 開発と品質
 

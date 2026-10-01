@@ -23,6 +23,8 @@ RSpec.describe "Focused upstream rules through the public plugin" do
     "UnusedRenderContent" => ["app/controllers/invoices_controller.rb", "render json: { ok: true }, status: 204", "render json: { ok: true }, status: 200"]
   }.freeze
 
+  policy_cases = %w[EnumHash SaveBang HasManyOrHasOneDependent UniqueValidationWithoutIndex].freeze
+
   rspec_cases = {
     "AnyInstance" => ["allow_any_instance_of(Invoice).to receive(:save!)", "allow(invoice).to receive(:save!)"],
     "MessageChain" => ["allow(invoice).to receive_message_chain(:account, :name)", "allow(account).to receive(:name)"],
@@ -33,7 +35,7 @@ RSpec.describe "Focused upstream rules through the public plugin" do
     "VoidExpect" => ["it { expect(invoice.total) }", "it { expect(invoice.total).to eq(10) }"]
   }.freeze
 
-  def with_project(rspec: false)
+  def with_project(rspec: false, policies: false)
     Dir.mktmpdir do |project|
       config = <<~YAML
         plugins:
@@ -44,10 +46,12 @@ RSpec.describe "Focused upstream rules through the public plugin" do
           TargetRailsVersion: 7.1
           SuggestExtensions: false
       YAML
-      if rspec
+      if rspec || policies
         config += <<~YAML
           inherit_gem:
-            rubocop-tsurakunai-rails: config/rspec.yml
+            rubocop-tsurakunai-rails:
+              #{"- config/rspec.yml" if rspec}
+              #{"- config/policies.yml" if policies}
         YAML
       end
       File.write(File.join(project, ".rubocop.yml"), config)
@@ -73,8 +77,8 @@ RSpec.describe "Focused upstream rules through the public plugin" do
   end
 
   rails_cases.each do |name, (path, bad, good)|
-    it "detects and accepts the meaningful #{name} cases through default plugin loading" do
-      with_project do |project|
+    it "detects and accepts the meaningful #{name} cases through the selected plugin profile" do
+      with_project(policies: policy_cases.include?(name)) do |project|
         file = File.join(project, path)
         FileUtils.mkdir_p(File.dirname(file))
         if path.start_with?("app/models")
@@ -122,7 +126,9 @@ RSpec.describe "Focused upstream rules through the public plugin" do
       cops = YAML.safe_load(stdout, permitted_classes: [Regexp, Symbol])
       rails = cops.select { |name, config| name.start_with?("Rails/") && config["Enabled"] == true }.keys
       rspec = cops.select { |name, config| name.start_with?("RSpec/") && config["Enabled"] == true }.keys
-      expect(rails).to match_array(rails_cases.keys.map { |name| "Rails/#{name}" })
+      expect(rails).to match_array((rails_cases.keys - policy_cases).map { |name| "Rails/#{name}" })
+      custom = cops.select { |name, config| name.start_with?("TsurakunaiRails/") && config["Enabled"] == true }.keys
+      expect(custom).to be_empty
       expect(rspec).to match_array(rspec_cases.keys.map { |name| "RSpec/#{name}" })
 
       File.open(File.join(project, ".rubocop.yml"), "a") do |file|
@@ -135,4 +141,23 @@ RSpec.describe "Focused upstream rules through the public plugin" do
       expect(cops.fetch("Rails/Delegate").fetch("Enabled")).to be(true)
     end
   end
+  it "enables design policies only with explicit adoption and preserves individual overrides" do
+    with_project(policies: true) do |project|
+      stdout, stderr, status = rubocop(project, "--show-cops")
+      expect(status.success?).to be(true), stderr
+      cops = YAML.safe_load(stdout, permitted_classes: [Regexp, Symbol])
+      expect(cops.select { |name, config| name.start_with?("Rails/") && config["Enabled"] == true }.keys)
+        .to match_array(rails_cases.keys.map { |name| "Rails/#{name}" })
+      %w[ControllerCallbacks DefaultScope ValidationBypass ModelRequestContext].each do |name|
+        expect(cops.fetch("TsurakunaiRails/#{name}").fetch("Enabled")).to be(true)
+      end
+      File.open(File.join(project, ".rubocop.yml"), "a") do |file|
+        file.write("\nTsurakunaiRails/ControllerCallbacks:\n  Enabled: false\n")
+      end
+      stdout, stderr, status = rubocop(project, "--show-cops")
+      expect(status.success?).to be(true), stderr
+      expect(YAML.safe_load(stdout, permitted_classes: [Regexp, Symbol]).fetch("TsurakunaiRails/ControllerCallbacks").fetch("Enabled")).to be(false)
+    end
+  end
+
 end

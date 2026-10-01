@@ -1,6 +1,6 @@
 # つらくないためのルール一覧
 
-標準16ルール、RSpec向け7ルール、文脈が必要な18領域を扱います。既存copはRuboCop Rails / RSpecを利用し、同じ検査を再実装しません。標準セットはplugin読み込みだけで有効になります。RSpecセットは `config/rspec.yml` の明示的な導入が必要です。
+標準8ルール、任意の設計方針8ルール、RSpec向け7ルール、文脈が必要な18領域を扱います。既存copはRuboCop Rails / RSpecを利用し、同じ検査を再実装しません。標準セットはplugin読み込みだけで有効になります。RSpecセットは `config/rspec.yml` の明示的な導入が必要です。
 
 構文検査が指摘するのはリスクの入口です。型・業務・データ・呼び出し元を確認して修正または例外を判断します。新しいDB制約・削除・例外を機械的に導入しません。導入先の明示設定が優先されます。
 
@@ -8,24 +8,31 @@
 
 | cop | 防ぎたい事故 | 対応と境界 |
 | --- | --- | --- |
-| TsurakunaiRails/ControllerCallbacks | actionの認可・ロード・副作用の順序が追えない | 明示的な流れへ。認証基盤の必須hookは許可名で管理 |
-| TsurakunaiRails/ModelRequestContext | modelがHTTPの暗黙の状態を必要とし、job等から使えない | 値・actorを引数で渡す。正当な業務属性の同名呼び出しは許可名で管理 |
-| TsurakunaiRails/DefaultScope | 取得・集計・作成の対象が知らずに変わる | 名前付きscope。継承や動的定義はレビュー |
-| TsurakunaiRails/ValidationBypass | validationが動くと思って更新する | 対象はmodel内の明示API。bulkと他レイヤーは文脈で判断 |
 | Rails/ActiveRecordOverride | 標準の永続化APIの契約が上書きされる | lifecycle契約を維持する。model callbackを全部禁止しない |
 | Rails/DuplicateAssociation | 同名の関連の定義が消える | 意図を一つに整理。継承を含む別ファイルの競合はレビュー |
 | Rails/AfterCommitOverride | 同名のcommit hookが別の登録に置き換わる | 対象イベントを一つの登録にまとめる。配信保証は別に確認 |
-| Rails/EnumHash | 配列の途中への値追加で既存データの意味が変わる | 値を明示。既存DBの値と一致するかレビュー |
 | Rails/EnumUniqueness | 異なる状態が同じDB値に対応する | 重複を解消。既存データの移行計画も確認 |
-| Rails/SaveBang | 更新に失敗しても成功扱いで先へ進む | 戻り値を判定するか例外API。暗黙の戻り値は許可し呼び出し元をレビュー |
-| Rails/HasManyOrHasOneDependent | 親の削除時に関連が残る・予期せず消える | destroyを強制せずrestrict、DB側管理、nilなど業務の方針を明示 |
-| Rails/UniqueValidationWithoutIndex | 並行登録で重複が入る | 対応indexを確認。schema.rbなし、条件付きvalidation、部分indexなどは別途レビュー |
 | Rails/AddColumnIndex | 指定したつもりのindexが作られない | 正しいindex作成操作。適切な列・作成時のロックはレビュー |
 | Rails/DangerousColumnNames | columnが永続化メソッド等と衝突する | 業務を表す別名。既存columnの改名は段階移行 |
 | Rails/NotNullColumn | 既存行のあるテーブルへの列追加が失敗する | nullableで追加→backfill→制約などを検討。意味のないdefaultで通さない |
 | Rails/UnusedRenderContent | 応答のbodyが意図せず消える | bodyを許可するstatusまたは空の応答にする |
 
-独自copは自動修正を実装しません。追加した上流copで自動修正を持つものもこのセットでは `AutoCorrect: false` にしています。修正後の仕様・安全性をレビューするためです。`SaveBang`は型を推論せず、代入・引数・暗黙の戻り値などの全経路を保証しないため、永続化の結果を呼び出し元まで追います。
+## 設計方針セット（任意）
+
+以下は構文の存在だけでは不具合を確定できないため、初期無効です。必要なcopだけ個別に `Enabled: true` を設定します。全8方針を採用すると決めた場合は `inherit_gem: rubocop-tsurakunai-rails: config/policies.yml` で導入できます。未採用ならこの方針に合わせる修正・例外コメントは不要です。
+
+| cop | 防ぎたい事故 | 対応と境界 |
+| --- | --- | --- |
+| TsurakunaiRails/ControllerCallbacks | actionの認可・ロード・副作用の順序が追えない | callbackを使わない方針を選んだチームだけ。通常の認証・ロードも検出する |
+| TsurakunaiRails/ModelRequestContext | modelがHTTPの暗黙の状態を必要とし、job等から使えない | HTTP依存を明示する方針を選ぶ場合だけ。同名業務属性は区別できない |
+| TsurakunaiRails/DefaultScope | 取得・集計・作成の対象が知らずに変わる | 暗黙の取得条件を避ける方針を選ぶ場合だけ。正当な利用もある |
+| TsurakunaiRails/ValidationBypass | validationが動くと思って更新する | 対象はmodel内の明示API。bulkと他レイヤーは文脈で判断 |
+| Rails/EnumHash | 配列の途中への値追加で既存データの意味が変わる | 値を明示。既存DBの値と一致するかレビュー |
+| Rails/SaveBang | 更新に失敗しても成功扱いで先へ進む | 戻り値を判定するか例外API。暗黙の戻り値は許可し呼び出し元をレビュー |
+| Rails/HasManyOrHasOneDependent | 親の削除時に関連が残る・予期せず消える | destroyを強制せずrestrict、DB側管理、nilなど業務の方針を明示 |
+| Rails/UniqueValidationWithoutIndex | 並行登録で重複が入る | 対応indexを確認。schema.rbなし、条件付きvalidation、部分indexなどは別途レビュー |
+
+独自copは自動修正を実装しません。追加した上流copで自動修正を持つものもこのセットでは `AutoCorrect: false` にしています。修正後の仕様・安全性をレビューするためです。方針セットでも自動修正は無効です。`SaveBang`は型を推論せず、代入・引数・暗黙の戻り値などの全経路を保証しないため、永続化の結果を呼び出し元まで追います。
 
 `ModelRequestContext`はmodel内のreceiverなしまたは `self` の `params` / `session` / `cookies` / `flash` / `request` / `response` / `current_user` / `current_account` 呼び出しを対象とします。ローカル変数・引数や別objectの同名APIは対象外です。これらが正当な業務属性なら `AllowedMethods` で名前を許可します。HTTP objectの引数渡しや `Current` への依存などは意味的レビューで判断します。
 
@@ -45,7 +52,7 @@ Minitestでも、stubで業務の保証を消さないこと、期待する例�
 
 ## ERB入力セット（明示導入）
 
-[導入手順](view-inputs.md)の設定で、partialの暗黙の入力（TsurakunaiPartialInputs）と解析エラー（ParserErrors）を検査します。対応するRailsでは入力宣言（StrictLocals）も選べます。書式のルールは含めません。Rubyの標準16ルールとは別のERB Lintで実行し、入力の渡し忘れは実際の描画でも検証します。
+[導入手順](view-inputs.md)の設定で、partialの暗黙の入力（TsurakunaiPartialInputs）と解析エラー（ParserErrors）を検査します。対応するRailsでは入力宣言（StrictLocals）も選べます。書式のルールは含めません。Rubyの標準8ルールとは別のERB Lintで実行し、入力の渡し忘れは実際の描画でも検証します。
 
 ## 意味的レビューの18領域
 

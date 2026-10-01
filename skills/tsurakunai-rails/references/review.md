@@ -1,5 +1,7 @@
 # 判断が必要な具体例
 
+ここでの改善・検証は、変更に関係する具体的な失敗がある場合の候補です。記載された形を全コードへ要求せず、契約を満たす既存実装と既存のテストを尊重します。
+
 ## callbackの移行で認可を落とさない
 
 ```ruby
@@ -16,7 +18,7 @@ def update
 end
 ```
 
-これは構造の例。`require_login`がredirectするだけならreturnするか例外を使って処理を止める必要がある。実際の認証ライブラリの規約に従う。認証・認可が元と同じ対象の全actionで必ず動くことをrequest testで確認する。ApplicationControllerやconcernのcallbackも追う。Deviseなどが要求するcallbackは理由を付けて例外にする。
+これは構造の例。`require_login`がredirectするだけならreturnするか例外を使って処理を止める必要がある。実際の認証ライブラリの規約に従う。認証・認可が元と同じ対象の全actionで必ず動くことをrequest testで確認する。ApplicationControllerやconcernのcallbackも追う。認証・ロード等のcallbackが契約を満たしていれば維持する。上の明示呼び出し例は、処理順序に具体的な問題があり移行を選んだ場合の候補である。
 
 ## validationとDB制約
 
@@ -35,7 +37,7 @@ end
 
 ## テストが呼び出しだけを保証している
 
-`expect(service).to receive(:call)`だけでは、金額・状態・認可が正しいか分からない。requestまたは公開API経由で状態をreloadして確認し、失敗時に状態が変わらないこと、他ユーザーのIDで読めない・更新できないことを確認する。外部ネットワーク境界のstubは使ってよいが、境界に渡る金額・冪等キーなどの重要な値は検証する。
+`expect(service).to receive(:call)`は委譲の検証には使えるが、それだけでは金額・状態・認可を保証しない。変更した仕様がどの既存テストで保証されるか確認し、不足する保証にだけ追加する。requestまたは公開API経由で状態をreloadして確認し、失敗時に状態が変わらないこと、他ユーザーのIDで読めない・更新できないことを確認する。外部ネットワーク境界のstubは使ってよいが、境界に渡る金額・冪等キーなどの重要な値は検証する。
 
 ## 例外をレビューする
 
@@ -46,7 +48,7 @@ update_columns(updated_at: Time.current)
 # rubocop:enable TsurakunaiRails/ValidationBypass
 ```
 
-理由が実装と一致するか、監査・callback・楽観ロックも省略する影響を確認する。ルール全体の無効化や大量のtodo生成を初手にしない。
+このdisable例はValidationBypassを明示採用した場合に限る。未採用なら例外コメントは不要。省略した監査・callback・楽観ロックに実際の影響があるか確認し、安全な保守処理を個別updateへ機械的に変えない。
 
 ## 参照先
 

@@ -1,12 +1,14 @@
 # ビューの変数と描画の境界
 
+ここでの改善・検証は、変更に関係する具体的な失敗がある場合の候補です。記載された形を全コードへ要求せず、契約を満たす既存実装と既存のテストを尊重します。
+
 このパッケージでは、変数の数や命名より、どの入口から描画しても必要な入力・認可・表示結果が保たれることを重視します。トップレベルのviewへcontrollerから渡す `@invoice` 等はRailsの通常の使い方です。一律に禁止せず、再利用するpartialの隠れた入力と、失敗時に欠ける変数を追います。例は部分例であり、認可・schema・失敗応答は実アプリに合わせて確認します。
 
 ## S17 ビューとpartialの入力を明示する
 
 **つらい状況**: `_invoice.html.erb` が `@invoice` と `@can_edit` を暗黙に読み、一覧・詳細・Turbo更新で別の値を表示する。controllerの成功経路だけが変数を用意し、validation失敗後の `render :new` では選択肢が消える。`defined?` / nil判定 / `local_assigns` による救済が、必須入力の渡し忘れを隠す。
 
-**判断**: トップレベルのviewはactionとの契約としてinstance variableを使ってよい。partialの業務データ・表示条件はlocals等の明示的な入力を優先し、各render呼び出し元を追う。入力を渡すためだけに大量のpresenterやcomponentを作る必要はない。既存のcomponentを使うならその入力契約を同様に確認する。
+**判断**: トップレベルのviewはactionとの契約としてinstance variableを使ってよい。異なる呼び出し元で対象や表示条件が食い違うなら、locals等の明示的な入力を候補にする。単一action専用のpartialが用意済みのinstance variableを読むだけなら欠陥としない。入力を渡すためだけに大量のpresenterやcomponentを作る必要はない。既存のcomponentを使うならその入力契約を同様に確認する。
 
 ```erb
 <%# 問題候補: partialが特定controllerの暗黙の状態へ依存する %>
@@ -33,7 +35,7 @@
 
 ここでは `invoice` が必須、`can_edit` は省略時に非表示という意図を持つ任意入力です。必要な権限判定を忘れたのに `false` で隠れる設計なら、`can_edit` も必須にする。strict localsは導入先のRailsとtemplate engineの対応を確認して選び、非対応環境へ必須導入しない。collection renderでは `as:` / 規約上のlocal名も含めて契約を揃える。Railsが用意するcounter・iteration local等を未知の依存と決めつけない。
 
-**actionの全経路**: new/editだけでなく、create/updateのvalidation失敗、別format、Turbo Stream、mailer、layoutからの呼び出しも確認する。失敗後のformはerrorsと入力した値を持つ対象を使い、別のnew/findで置き換えて消さない。選択肢などは失敗時にも同じ認可範囲で用意する。変数を用意するためだけにcontroller callbackを増やすのではなく、必要な経路から明示的に呼ぶ局所的な準備処理を候補にする。
+**actionの全経路**: new/editだけでなく、create/updateのvalidation失敗、別format、Turbo Stream、mailer、layoutからの呼び出しも確認する。失敗後のformはerrorsと入力した値を持つ対象を使い、別のnew/findで置き換えて消さない。選択肢などは失敗時にも同じ認可範囲で用意する。準備処理は既存のcallbackでも局所的なメソッド呼び出しでもよい。必要な経路を覆い、入力とerrorsを保つことを確認し、方式だけを理由に変更しない。
 
 **optionalとnil**: 値がなくてもよい仕様ならfallbackは正当。必須データの欠落を `@invoice&.number` や空文字で隠して完了扱いにしない。optionalな装飾と、存在しなければ操作できない業務データを分ける。
 
@@ -61,7 +63,7 @@
 
 ## 機械と判断の分担
 
-このGemのRuboCop pluginはERB/Haml/Slimを解析するtemplate linterではありません。Rubyのlint成功だけでviewを検査済みと扱わない。Gemに同梱したERB Lint設定を導入済みなら `check --views -- <実際のテストコマンド>` で実行する。設定は `.erb_lint.yml` と `.erb_linters/tsurakunai_partial_inputs.rb`、依存は `erb_lint ~> 0.9`。新規導入には `install-view-lint`、対応環境では `--strict-locals` を選べる。既存設定は上書きせず必要な項目をマージする。HTML ERB以外は既存のtemplate linterがあれば実行し、入力契約・呼び出し元・helper内部・失敗時の描画はスキルと実際の描画テストで確認します。同梱のTsurakunaiPartialInputsはpartialのRuby tokenだけを検査する。通常のviewと文字列・コメントは許容し、動的参照やhelper内部を検査済みと扱わない。
+このGemのRuboCop pluginはERB/Haml/Slimを解析するtemplate linterではありません。Rubyのlint成功だけでviewを検査済みと扱わない。Gemに同梱したERB Lint設定を導入済みなら `check --views -- <実際のテストコマンド>` で実行する。設定は `.erb_lint.yml` と `.erb_linters/tsurakunai_partial_inputs.rb`、依存は `erb_lint ~> 0.9`。導入を依頼された場合や入力の不一致を確認した場合は `install-view-lint`、対応環境では `--strict-locals` を候補にできる。既存設定は上書きせず必要な項目をマージする。HTML ERB以外は既存のtemplate linterがあれば実行し、入力契約・呼び出し元・helper内部・失敗時の描画はスキルと実際の描画テストで確認します。同梱のTsurakunaiPartialInputsはpartialのRuby tokenだけを検査する。通常のviewと文字列・コメントは許容し、動的参照やhelper内部を検査済みと扱わない。
 
 ## 仕様を確認する資料
 
