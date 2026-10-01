@@ -1,6 +1,6 @@
 # つらくないためのルール一覧
 
-標準16ルール、RSpec向け7ルール、文脈が必要な16領域を扱います。既存copはRuboCop Rails / RSpecを利用し、同じ検査を再実装しません。標準セットはplugin読み込みだけで有効になります。RSpecセットは `config/rspec.yml` の明示的な導入が必要です。
+標準16ルール、RSpec向け7ルール、文脈が必要な18領域を扱います。既存copはRuboCop Rails / RSpecを利用し、同じ検査を再実装しません。標準セットはplugin読み込みだけで有効になります。RSpecセットは `config/rspec.yml` の明示的な導入が必要です。
 
 構文検査が指摘するのはリスクの入口です。型・業務・データ・呼び出し元を確認して修正または例外を判断します。新しいDB制約・削除・例外を機械的に導入しません。導入先の明示設定が優先されます。
 
@@ -43,7 +43,7 @@
 
 Minitestでも、stubで業務の保証を消さないこと、期待する例外・状態・失敗経路を検証することは同じです。RSpecへの移行を要求しません。
 
-## 意味的レビューの16領域
+## 意味的レビューの18領域
 
 | ID・領域 | 最低限追う証拠 | 判断集 |
 | --- | --- | --- |
@@ -63,6 +63,8 @@ Minitestでも、stubで業務の保証を消さないこと、期待する例�
 | S14 modelの不変条件 | 全入口の条件、状態遷移、HTTP依存、callbackの局所性 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s14-モデルはデータと業務の不変条件を保つ) |
 | S15 複数modelの業務処理 | 自然な集約、transaction、成功と失敗、actorの契約 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s15-複数モデルの業務処理に明示的な入口を作る) |
 | S16 入力・検索・表示の境界 | UI専用の条件と保存条件、queryのscope、表示の副作用 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s16-入力検索表示を永続モデルへ押し込まない) |
+| S17 viewとpartialの入力 | renderの全入口、locals、必須/optional、validation失敗の表示 | [ビュー](../skills/tsurakunai-rails/references/views.md#s17-ビューとpartialの入力を明示する) |
+| S18 描画の取得と副作用 | helper内部、tenant scope、N+1、状態変更、共有objectの変更 | [ビュー](../skills/tsurakunai-rails/references/views.md#s18-描画で業務処理とデータ取得を隠さない) |
 
 すべてを全変更に要求しません。変更した振る舞い・データ・entrypointに該当する領域を選び、根拠が足りない部分は未検証として記録します。
 

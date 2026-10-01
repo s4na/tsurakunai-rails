@@ -63,7 +63,7 @@ Bundler.with_unbundled_env do
       run!(env, "bundle", "exec", "tsurakunai-rails", "install-skill", "--target", target, directory: application)
       folder = target == "codex" ? ".agents" : ".claude"
       installed = File.join(application, folder, "skills", "tsurakunai-rails")
-      %w[review.md responsibilities.md].each do |reference|
+      %w[review.md responsibilities.md views.md].each do |reference|
         raise "Missing installed skill reference: #{reference}" unless File.file?(File.join(installed, "references", reference))
       end
     end

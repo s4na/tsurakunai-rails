@@ -62,7 +62,7 @@ CIには同じ `check -- <テストコマンド>` を置き、PRレビューに�
 
 - **標準16ルール**: 独自4ルールにRuboCop Railsの重要な12ルールを組み合わせます。callback・暗黙scope・validation迂回・modelのHTTP依存に加え、永続化APIの上書き、関連・commit hookの重複、enumの値、更新失敗、関連削除、一意index、migrationと応答の事故を扱います。pluginの読み込みだけで上流pluginも読み込みます。
 - **RSpec7ルール**: 全instanceのstub、message chain、検査対象のstub、契約を検証しないdouble、種類を指定しない例外assert、setupの上書き、matcherのないexpectを扱います。RSpec以外のプロジェクトへ要求しません。
-- **意味的レビュー16領域**: 認可、入力・SQL・出力、DB整合性、削除、更新結果、外部副作用・job、競合、migration、query、時刻・金額、cache・秘密、テスト、controller/modelの責務、複数modelの処理、入力・検索・表示の境界。悪い例・改善案・例外・検証方法を[スキル](skills/tsurakunai-rails/SKILL.md)から必要に応じて読みます。
+- **意味的レビュー18領域**: 認可、入力・SQL・出力、DB整合性、削除、更新結果、外部副作用・job、競合、migration、query、時刻・金額、cache・秘密、テスト、controller/modelの責務、複数modelの処理、入力・検索・表示の境界、view/partialの入力、描画の取得と副作用。悪い例・改善案・例外・検証方法を[スキル](skills/tsurakunai-rails/SKILL.md)から必要に応じて読みます。
 
 RSpecセットを使う場合は次を追加します。必要な上流GemもこのGemの依存として導入されます。
 
@@ -85,6 +85,10 @@ inherit_gem:
 - 画面固有の入力、複雑な検索、表示の整形は、必要性に応じてform/query/presenter等の境界へ分ける。
 
 「全controllerをserviceへ」「modelは属性だけ」「行数が多いから分割」では判断しません。業務条件の重複、HTTPの暗黙の状態への依存、失敗時の不整合などの具体的な負担を根拠にします。構文だけで検出できるmodel内のHTTP helper呼び出しは `TsurakunaiRails/ModelRequestContext` が扱います。
+
+## ビューの変数とpartial
+
+[ビューの判断集](skills/tsurakunai-rails/references/views.md)で、トップレベルviewのinstance variable、partialへのlocals、必須・任意入力、validation失敗時のform、helper内部のquery・副作用を扱います。再利用partialの暗黙依存を整理し、通常のRailsのviewまで一律に禁止しません。認可はボタンの表示だけで終えず、更新actionでも保証します。ERB等はこのGemのRuboCop検査対象ではないため、スキルと実際の描画テストで確認します。
 
 ## 例外と段階導入
 
