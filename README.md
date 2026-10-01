@@ -60,10 +60,63 @@ CIには同じ `check -- <テストコマンド>` を置き、PRレビューに�
 
 [ルール一覧](docs/rules.md)に、copごとの採用理由・改善の方向・正当な例外・静的検査の限界をまとめています。
 
-- **標準8ルール**: 永続化APIの上書き、関連・commit hookの重複、enum値の重複、効かないindex指定、危険なcolumn名、NOT NULL追加、失われる応答bodyを扱います。
-- **任意の設計方針8ルール**: 独自4 cop（callback・default scope・validation迂回・特定名のmodel呼び出し）と、enum表現・保存API・関連削除・一意indexの4 cop。コードの文脈によって正当な使い方があるため初期無効です。必要なものだけ選んで有効にします。
-- **RSpec7ルール**: 全instanceのstub、message chain、検査対象のstub、契約を検証しないdouble、種類を指定しない例外assert、setupの上書き、matcherのないexpectを扱います。RSpec以外のプロジェクトへ要求しません。
-- **意味的レビュー18領域**: 認可、入力・SQL・出力、DB整合性、削除、更新結果、外部副作用・job、競合、migration、query、時刻・金額、cache・秘密、テスト、controller/modelの責務、複数modelの処理、入力・検索・表示の境界、view/partialの入力、描画の取得と副作用。悪い例・改善案・例外・検証方法を[スキル](skills/tsurakunai-rails/SKILL.md)から必要に応じて読みます。
+### 標準ルール（初期有効）
+
+| cop | 検出する構文・リスク |
+| --- | --- |
+| `Rails/ActiveRecordOverride` | `save`等の標準APIを上書きし、永続化の契約を変える |
+| `Rails/DuplicateAssociation` | 同名の関連を重複定義し、先の定義が消える |
+| `Rails/AfterCommitOverride` | 同名のcommit callbackを複数登録し、先の登録が置き換わる |
+| `Rails/EnumUniqueness` | 複数のenum値が同じDB値に対応する |
+| `Rails/AddColumnIndex` | `add_column`の効かない`index: true`指定 |
+| `Rails/DangerousColumnNames` | Active Recordのメソッドと衝突するcolumn名 |
+| `Rails/NotNullColumn` | 既存tableへdefaultなしのNOT NULL columnを追加する |
+| `Rails/UnusedRenderContent` | bodyを返さないHTTP statusにrender内容を指定する |
+
+構文を検出するルールです。既存データや呼び出し元の意図を確認して修正を判断します。
+
+### 設計方針ルール（初期無効・任意）
+
+文脈によって正当な使い方があるため、必要な方針だけ選んで有効にします。
+
+| cop | 採用した場合に検出するもの |
+| --- | --- |
+| `TsurakunaiRails/ControllerCallbacks` | controllerのbefore/after/around callback登録。認証・ロードの通常利用も対象 |
+| `TsurakunaiRails/DefaultScope` | modelの`default_scope`による暗黙の取得条件 |
+| `TsurakunaiRails/ValidationBypass` | model内の`update_columns`等や明示的な`validate: false` |
+| `TsurakunaiRails/ModelRequestContext` | model内の`params`・`current_user`等の特定名の呼び出し。同名業務属性との区別は文脈で判断 |
+| `Rails/EnumHash` | 値を明示しない配列形式のenum |
+| `Rails/SaveBang` | non-bangの保存APIで結果を扱わない呼び出し |
+| `Rails/HasManyOrHasOneDependent` | has_many/has_oneのdependent指定漏れ |
+| `Rails/UniqueValidationWithoutIndex` | 対応する一意indexを確認できないuniqueness validation |
+
+未採用の方針に合わせた修正や例外コメントは不要です。
+
+### RSpecルール（任意セット）
+
+`config/rspec.yml`を明示導入した場合に有効です。テストの目的と他のテストの保証を踏まえて判断し、Minitestへの適用やRSpecへの移行は要求しません。
+
+| cop | 検出するもの |
+| --- | --- |
+| `RSpec/AnyInstance` | 全instanceを対象にするstub・期待 |
+| `RSpec/MessageChain` | method chainへのstub |
+| `RSpec/SubjectStub` | 検査対象subjectへのstub |
+| `RSpec/VerifiedDoubles` | 実契約を検証しないdouble |
+| `RSpec/UnspecifiedException` | 種類を指定しない例外の期待 |
+| `RSpec/OverwritingSetup` | 同じscopeのsetup定義の上書き |
+| `RSpec/VoidExpect` | matcherのないexpect |
+
+### ERBルール（任意セット）
+
+`install-view-lint`で入力規約を採用し、`check --views`で実行します。対象は`app/views/**/*.html.erb`です。
+
+| linter | 検出するもの |
+| --- | --- |
+| `TsurakunaiPartialInputs` | partial内のRubyのinstance variable。通常view・本文・コメント・通常文字列は対象外 |
+| `ParserErrors` | ERB Lintのparserが検出する構造上のエラー |
+| `StrictLocals` | partialの入力宣言漏れ。対応環境で`--strict-locals`を選んだ場合だけ有効 |
+
+入力の渡し忘れ・名前違いは、strict localsを使った実際の描画でも確認します。単一action専用partialのinstance variableを、それだけで欠陥とは扱いません。再利用するpartial等、規約を採用した範囲へ導入できます。
 
 方針の採用例（callbackを使わない規約をチームで選んだ場合だけ）:
 
@@ -86,6 +139,45 @@ inherit_gem:
 書式やDSL表現の好みに関する上流Rails/RSpecルールはこのセットから一括で有効にしません。既存の方針で追加するルールや例外は導入先の `.rubocop.yml` に明示してください。標準セットの自動修正は無効です。callbackの削除、bang APIやenumへの変更で意味・認可・既存DB値が変わる可能性があるためです。
 
 独自controllerルールは `app/controllers/**/*.rb`（concern含む）、modelルールは `app/models/**/*.rb`（concern含む）を対象にします。継承関係・receiverの型は推論しません。model内の同名の独自APIも検出する可能性があります。異なる配置を使う場合は `Include` を上書きしてください。動的な `send`、別レイヤー、bulk処理、動的optionsは意味的レビューで判断します。上流の一意index検査もschemaや条件によって検査できない場合があり、lint成功だけでDB整合性を保証しません。
+
+## スキルの内容
+
+Codex / Claude Code向けの `tsurakunai-rails` は、lintで分からない業務の文脈を追って実装・レビューを行います。導入と呼び出しは次のとおりです。必要なクライアントだけ導入します。
+
+```sh
+bundle exec tsurakunai-rails install-skill --target codex
+bundle exec tsurakunai-rails install-skill --target claude
+```
+
+- Codex: `$tsurakunai-rails この変更を実装・検証してください`
+- Claude Code: `/tsurakunai-rails この変更をレビューしてください`
+
+### 判断する18領域
+
+| ID | 領域 | 確認する具体的な問題 |
+| --- | --- | --- |
+| S01 | 認証・認可・tenant | 別ユーザー・別tenantの対象を読める、更新できる |
+| S02 | 入力・SQL・出力 | 未検証の入力がSQLやHTML等へ入り、取得・出力の安全性が変わる |
+| S03 | DB整合性 | 必要な一意性・参照・NULL条件が保存経路や競合で崩れる |
+| S04 | 関連と削除 | 履歴の消失、孤立した子、削除拒否時の不整合 |
+| S05 | 更新結果・transaction | 保存失敗を成功扱いする、途中失敗で一部だけ残る |
+| S06 | 外部副作用・job | rollbackしても課金される、commit後に未送信・二重実行になる |
+| S07 | 競合・状態遷移 | 同時操作で在庫・状態・一意性が崩れる |
+| S08 | migration・deploy | 既存データ、新旧コードの共存、ロック、復旧が破綻する |
+| S09 | query・一覧・batch | 想定件数でquery・メモリが増え、ページ境界で欠落・重複する |
+| S10 | 時刻・日付・金額 | zone・日付境界・通貨・丸めにより業務結果が変わる |
+| S11 | cache・ログ・秘密 | user/tenant別の値が混ざる、失効しない、秘密が露出する |
+| S12 | テストの信頼性 | 別のエラーでも通る、stubや共有状態で必要な保証が消える |
+| S13 | controllerの入口と出口 | 業務条件の重複、認可・入力・失敗応答の対応漏れ |
+| S14 | modelの不変条件 | 別の保存入口で条件が抜ける、必要なrequest状態がないと動かない |
+| S15 | 複数modelの業務処理 | 手順・成功条件・transactionが分散し、失敗時の状態を追えない |
+| S16 | 入力・検索・表示の境界 | UI専用条件で保存が変わる、query抽出で取得範囲が失われる |
+| S17 | view・partialの入力 | 別recordを表示する、保存失敗時にerrors・入力・選択肢が欠ける |
+| S18 | 描画の取得・副作用 | helper内の取得が増える、描画や再描画がDB・外部状態を変える |
+
+全18領域を毎回点検せず、変更に関係するものだけ確認します。既存設計が契約を満たしていれば維持し、callback・service・instance variableの存在、命名や行数を理由に指摘しません。指摘には発生条件、期待と実際の差、具体的な損害、最小の修正と必要な検証を示します。正当な部分stubや既存テストの保証も尊重し、全local化・クラス抽出・網羅性だけを理由にした追加テストを要求しません。
+
+[スキル本体](skills/tsurakunai-rails/SKILL.md)から、[責務](skills/tsurakunai-rails/references/responsibilities.md)・[ビュー](skills/tsurakunai-rails/references/views.md)・[データ](skills/tsurakunai-rails/references/data.md)・[境界](skills/tsurakunai-rails/references/boundaries.md)・[運用とテスト](skills/tsurakunai-rails/references/testing.md)の具体例へ進めます。
 
 ## コントローラとモデルの扱い
 
