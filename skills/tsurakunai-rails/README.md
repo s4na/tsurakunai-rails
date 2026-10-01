@@ -1,8 +1,7 @@
-# つらくないRailsスキル
+# つらくないRailsスキルセット
 
-Railsの実装・レビューで、[日常の設計方針](references/daily-design.md)を標準で適用し、lintとテストを実行します。業務処理の分離、純粋な計算、ViewComponent、命名などを確認します。各方針は導入先の規約で個別にOFFにできます。
+- [実装](../tsurakunai-rails-implement/SKILL.md): 利用者の操作から入口・状態・失敗・テストを組み立てる
+- [レビュー](../tsurakunai-rails-review/SKILL.md): 境界が崩れる具体的な経路を編集せず確認する
+- [共通の設計判断](references/daily-design.md): 両方が使う基準と一次資料
 
-- Codex: `$tsurakunai-rails この変更をレビューしてください`
-- Claude Code: `/tsurakunai-rails この変更をレビューしてください`
-
-[スキル本体](SKILL.md)に実行手順と各レビューガイドへのリンクがあります。使うクライアントに応じて、`bundle exec tsurakunai-rails install-skill --target codex` または `--target claude` で配置できます。
+`bundle exec tsurakunai-rails install-skill --target codex`または`--target claude`で3つの入口をまとめて配置します。既存の`$tsurakunai-rails`・`/tsurakunai-rails`も依頼に合う手順へ案内します。

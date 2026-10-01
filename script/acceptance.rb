@@ -45,10 +45,6 @@ Dir.mktmpdir("tsurakunai-acceptance-") do |project|
       TargetRailsVersion: 7.1
       Include:
         - app/**/*.rb
-    # Authentication stays a scoped, tested exception to the callback policy.
-    TsurakunaiRails/ControllerCallbacks:
-      AllowedMethods:
-        - authenticate_account!
     Style:
       Enabled: false
     Layout:

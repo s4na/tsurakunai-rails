@@ -31,7 +31,7 @@ bundle exec tsurakunai-rails install-skill --target codex
 bundle exec tsurakunai-rails install-skill --target claude
 ```
 
-Codexでは `.agents/skills/tsurakunai-rails/`、Claude Codeでは `.claude/skills/tsurakunai-rails/` に配置します。`--project PATH`で別のプロジェクトを指定できます。配置したファイルをコミットすればチームで共有できます。既存フォルダは上書きしません。更新時はGem同梱の `skills/tsurakunai-rails/` と比較し、ローカル変更を保全してから入れ替えてください。アンインストールは配置したスキルフォルダとGem・plugin設定を取り除きます。
+Codexでは`.agents/skills/`、Claude Codeでは`.claude/skills/`配下に、`tsurakunai-rails`・`tsurakunai-rails-implement`・`tsurakunai-rails-review`の3フォルダを配置します。共通資料は`tsurakunai-rails/references/`に一度だけ置き、他の2つが参照します。`--project PATH`で別のプロジェクトを指定できます。配置したファイルをコミットすればチームで共有できます。いずれかの既存フォルダがあれば、全体の配置を始めず終了します。既存ファイルは上書きしません。更新時はGem同梱の`skills/`の3フォルダと比較し、ローカル変更を保全してから入れ替えてください。更新・アンインストールは3フォルダを一組として扱います。旧版の1フォルダだけを残すと、新しい相互参照は使えません。アンインストール時はGem・plugin設定も取り除きます。
 
 ## 使う
 
@@ -50,13 +50,13 @@ bundle exec rubocop --only TsurakunaiRails,Rails,RSpec
 
 Ruby lint・View lint・Testsごとの結果を表示します。`View lint: SKIPPED`は未検査を表し、成功には数えません。viewを含む検査が必要なら、任意ERBセットを導入して`--views`を指定します。
 
-続けてCodexで `$tsurakunai-rails この変更を実装・検証してください`、Claude Codeで `/tsurakunai-rails この変更をレビューしてください` と依頼します。スキルはlint・テストと、文脈を追った設計レビューを両方行い、実行結果・判断根拠・未検証事項を報告します。**CLIの成功は設計レビューの完了ではありません。** 人間も [SKILL.md](../skills/tsurakunai-rails/SKILL.md) と [判断例](../skills/tsurakunai-rails/references/review.md) をレビュー手順として使えます。
+実装するときはCodexで`$tsurakunai-rails-implement この変更を実装してください`、レビューでは`$tsurakunai-rails-review この変更を編集せず確認してください`と呼びます。Claude Codeは先頭を`/`にします。既存の`tsurakunai-rails`も両手順へ案内する入口として残ります。
 
-CIには同じ `check -- <テストコマンド>` を置き、PRレビューにコードレビューの記録を残してください。AIのコードレビューをCIで自動実行したことにはしません。
+実装スキルは入口・状態・失敗・テストを作る手順、レビュースキルは崩れる経路を確認する手順です。[共通資料](../skills/tsurakunai-rails/references/daily-design.md)を共有します。**CLIの成功は文脈レビューの完了ではありません。** CIはAIの判断を自動実行しません。
 
 ## 標準方針を調整する
 
-pluginを追加すると、設計方針8ルールと事故防止8ルール、RSpec7ルールが有効になります。以前のバージョンから更新すると新しい指摘が出るため、[更新時の確認](adoption.md)を先に読んでください。既存の`config/policies.yml`は互換用に残っていますが、指定は不要です。
+pluginを追加すると、設計方針7ルールと事故防止8ルール、RSpec7ルールが有効になります。以前のバージョンから更新すると新しい指摘が出るため、[更新時の確認](adoption.md)を先に読んでください。既存の`config/policies.yml`はControllerCallbacksの全面禁止も有効にする厳格presetとして残っています。通常の導入では不要です。
 
 合わないlintは`.rubocop.yml`で個別にOFFにできます。
 
@@ -65,7 +65,7 @@ TsurakunaiRails/ControllerCallbacks:
   Enabled: false
 ```
 
-スキルのPORO・純粋な計算・ViewComponent等も標準ONです。AIが読む設計方針は[AGENTS.md等への個別OFF](../skills/tsurakunai-rails/references/daily-design.md#方針を個別に外す)で調整します。RuboCopの設定とは別です。
+実装・レビューでは[共通の設計判断](../skills/tsurakunai-rails/references/daily-design.md#導入先に合わせる)を標準で使います。AGENTS.md等の既存規約や方針をOFFにする指示を優先します。RuboCopの設定とは別です。
 
 ## RSpecとERB
 
@@ -82,7 +82,7 @@ ERBを使うアプリでは、[ERB用の標準設定](view-inputs.md)と`erb_lin
 
 ## 例外と段階導入
 
-標準設定は認証・ロード等のcallbackも検出します。認証基盤などで必要なhookは許可名に指定できます。削除して認証を壊すより、対象を限定した例外を選びます。
+callback全面禁止は標準OFFです。厳格presetや個別設定でONにする場合も、認証基盤などで必要なhookは許可名で残せます。
 
 ```yaml
 TsurakunaiRails/ControllerCallbacks:

@@ -2,24 +2,34 @@
 
 require "yaml"
 
-root = File.expand_path("../skills/tsurakunai-rails", __dir__)
-source = File.read(File.join(root, "SKILL.md"))
-frontmatter = source.match(/\A---\r?\n(.*?)\r?\n---\r?\n/m)
-raise "Missing skill frontmatter" unless frontmatter
+# Optional root lets package smoke validate the installed, portable skill set.
+root = File.expand_path(ARGV.fetch(0, "../skills"), ARGV.empty? ? __dir__ : Dir.pwd)
+names = %w[tsurakunai-rails tsurakunai-rails-implement tsurakunai-rails-review]
+names.each do |name|
+  directory = File.join(root, name)
+  source = File.read(File.join(directory, "SKILL.md"))
+  frontmatter = source.match(/\A---\r?\n(.*?)\r?\n---\r?\n/m)
+  raise "Missing skill frontmatter: #{name}" unless frontmatter
 
-metadata = YAML.safe_load(frontmatter[1])
-raise "Skill name does not match installation directory" unless metadata.fetch("name") == File.basename(root)
-raise "Missing skill description" unless metadata.fetch("description").is_a?(String) && !metadata["description"].empty?
+  metadata = YAML.safe_load(frontmatter[1])
+  raise "Skill name does not match installation directory: #{name}" unless metadata.fetch("name") == name
+  raise "Missing skill description: #{name}" unless metadata.fetch("description").is_a?(String) && !metadata["description"].empty?
 
-# Validate relative references which travel with the installed package.
-source.scan(/\]\((references\/[^)]+)\)/).flatten.each do |reference|
-  path = File.expand_path(reference, root)
-  raise "Invalid or missing reference: #{reference}" unless path.start_with?("#{root}/") && File.file?(path)
+  ui = YAML.safe_load_file(File.join(directory, "agents", "openai.yaml")).fetch("interface")
+  %w[display_name short_description default_prompt].each do |field|
+    raise "Missing UI metadata: #{name}/#{field}" unless ui.fetch(field).is_a?(String) && !ui[field].empty?
+  end
+  raise "Missing skill invocation: #{name}" unless ui.fetch("default_prompt").include?("$#{name}")
+
+  # Shared references and sibling workflows must remain inside the installed set.
+  Dir[File.join(directory, "**", "*.md")].each do |document|
+    File.read(document).scan(/\]\(([^)]+)\)/).flatten.each do |reference|
+      next if reference.match?(/\A(?:[a-z]+:|#)/i)
+
+      path = File.expand_path(reference.split("#").first, File.dirname(document))
+      raise "Invalid or missing reference: #{document}: #{reference}" unless path.start_with?("#{root}/") && File.file?(path)
+    end
+  end
 end
-ui = YAML.safe_load_file(File.join(root, "agents", "openai.yaml")).fetch("interface")
-%w[display_name short_description default_prompt].each do |field|
-  raise "Missing UI metadata: #{field}" unless ui.fetch(field).is_a?(String) && !ui[field].empty?
-end
-raise "Missing skill invocation in default prompt" unless ui.fetch("default_prompt").include?("$#{metadata.fetch('name')}")
 
-puts "Skill metadata and packaged references validated."
+puts "Three skill entry points, metadata and shared references validated."

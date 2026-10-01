@@ -1,0 +1,4 @@
+interface:
+  display_name: "つらくないRails 実装"
+  short_description: "利用者の操作から責務・状態・テストを組み立てる"
+  default_prompt: "$tsurakunai-rails-implement を使い、このRails変更を設計・実装・検証してください。"

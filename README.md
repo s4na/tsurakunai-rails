@@ -1,62 +1,62 @@
 # つらくないRails
 
-Railsアプリの日常設計に、おまかせの標準方針を持ち込むRuboCopプラグインとCodex / Claude Code向けスキルです。コントローラーを薄く保ち、業務処理・計算・表示の責務を分け、変更や運用の負担を抑えることを目指します。
+Railsの変更をどう作るか、その設計がどこで崩れるかを、別々のスキルで扱います。両方が同じ設計資料を参照し、機械で判定できる構文だけをRuboCop・ERB Lintで検査します。
 
-**推奨する設計は標準でON。合わない方針だけ個別にOFFにできます。** 動作するかだけでなく、処理をどこに置くかをレビューします。
+GitLabの公開コードと37signalsの一次資料を読み、単純なCRUD、振る舞いを持つモデル、必要なPOROを使い分ける方針にしました。特定企業の階層やライブラリを一式コピーするものではありません。[調査根拠と採用判断](skills/tsurakunai-rails/references/daily-design.md#調査から採用したこと)
 
 [導入と使い方](docs/installation.md) · [既存アプリへの導入・更新](docs/adoption.md)
 
-## スキルが標準で確認すること
+## 使うスキル
 
-[tsurakunai-rails](skills/tsurakunai-rails/SKILL.md)は、次の制約を変更コードへ適用します。いずれもAIが文脈を見て判断する方針で、RuboCopが自動検出するものではありません。
-
-- **コントローラーはHTTP処理に限定**: 業務の計算・判断・複数モデルの更新手順を置かない。単純なCRUDと応答の分岐は残す
-- **モデルから独立した業務処理はPOROへ**: 見積・帳票・外部連携の手順は通常のRubyオブジェクトへ分離する。validationやレコード自身の状態遷移まで移さない
-- **純粋な計算**: 値だけで済む計算は、DB・現在時刻・共有状態から切り離す。必要な値を引数で受け取り、引数を書き換えず結果を返す
-- **ViewComponent優先**: 新しい再利用UIはpartialよりcomponentを選ぶ。静的な短い断片や既存component基盤は例外。partialというだけで遅いとは判断しない
-- **クエリと描画を分離**: 取得・絞り込み・先読みをviewやhelperに隠さない。複雑な検索はquery objectへ、単純なscopeはそのままにする
-- **外部処理と重い処理を明示**: 表示やvalidationに通信を隠さず、失敗・再実行を扱う。大量取得は分割し、job・cacheは必要性と運用負担を見て選ぶ
-- **名前で仕事と副作用を示す**: `Manager#process`のような曖昧な名前を避け、対象と操作を表す。Railsや外部APIの決まった名前は維持する
-
-[具体例・例外・個別OFFの書き方](skills/tsurakunai-rails/references/daily-design.md)。変更していないコードの一括改修、全モデルメソッドの切り出し、未承認の依存追加は行いません。認可・保存失敗・描画結果などの正しさは、[レビューガイド](skills/tsurakunai-rails/references/review.md)と実際のテストで確認します。
-
-## RuboCopが自動検出すること
-
-### 設計方針: 標準ON
-
-| ルール | 制約 |
+| 入口 | 役割 |
 | --- | --- |
-| TsurakunaiRails/ControllerCallbacks | controllerのcallbackを使わず処理順を明示する。認証hook等は許可名で残せる |
-| TsurakunaiRails/ModelRequestContext | model内でparams・current_user等のHTTPの状態を直接参照しない |
-| TsurakunaiRails/DefaultScope | 暗黙の絞り込みを避け、名前のあるscopeを使う |
-| TsurakunaiRails/ValidationBypass | validationを省略する更新を通常のモデル操作に混ぜない |
-| Rails/EnumHash | enumとDB値の対応を明示する |
-| Rails/SaveBang | 保存結果を無視しない。失敗を分岐で扱うnon-bangも許容 |
-| Rails/HasManyOrHasOneDependent | 親削除時の関連データの扱いを明示する |
-| Rails/UniqueValidationWithoutIndex | 一意性validationに対応するunique indexを設ける |
+| [tsurakunai-rails-implement](skills/tsurakunai-rails-implement/SKILL.md) | 利用者の操作から、入口・責務・保存失敗・テストを組み立てる |
+| [tsurakunai-rails-review](skills/tsurakunai-rails-review/SKILL.md) | 境界・状態・副作用が崩れる経路を、編集せず根拠付きで確認する |
+| [tsurakunai-rails](skills/tsurakunai-rails/SKILL.md) | 既存の呼び出し名。依頼に合う実装・レビュー手順へ案内する |
 
-構文の検出には限界があります。独自APIとの区別や業務上の例外は文脈で確認し、`.rubocop.yml`で個別OFF・許可名・対象範囲を調整します。**lint成功だけで上のスキルの設計方針を満たしたことにはなりません。**
+`install-skill --target codex`または`--target claude`で3つをまとめて配置します。Codexは`$tsurakunai-rails-implement`、Claude Codeは`/tsurakunai-rails-implement`のように呼びます。
 
-### 補助の事故防止: 標準ON
+## 実装: どう作るか
 
-既存の8ルールも維持します。Active Recordのメソッド上書き、関連・commit callback・enum値の重複、migrationの誤指定、本文を返せないHTTP statusでのrenderを検出します。[cop一覧と限界](docs/rules.md#標準セット)
+- **利用者の操作を入口にする**: routeと近い実装を読み、actor・許可入力・対象scope・成功/失敗の応答を決める
+- **単純なCRUDは直接書く**: controller→modelの更新と応答分岐で済むなら、新しいserviceを作らない
+- **状態を守るAPIをモデルに置く**: 不変条件・状態遷移を業務名のメソッドへまとめる。関連行を更新するだけでモデル外へ出さない
+- **独立した仕事だけ分ける**: 外部I/O・独立計算・複数集約の調整は、追う場所を減らせる単位でPOROへ。値だけの計算に不要なDB・時刻・共有状態を混ぜない
+- **失敗を先に扱う**: transaction、保存の戻り値、commit後の副作用、timeoutと再実行の扱いを決める
+- **取得と表示の契約を作る**: scope・ページング・関連取得を追えるようにし、明示localsのpartialや利益のあるcomponentを選ぶ
+- **公開結果をテストする**: modelとHTTP境界で成功・拒否・失敗後の状態を確認し、変更に関係する再実行やquery数も検証する
 
-### RSpec: 標準ON
+例えばタイトル編集は既存controllerとmodelで完結させます。注文と明細の確定はモデルの`confirm!`へ、決済や別集約との調整が加わるなら名前付きの操作へ分けます。最初からService・Concern・POROを一組生成しません。
 
-RSpec7ルールはspecファイルを対象に標準で有効です。RSpec本体の導入やテスト方式の変更は要求しません。instance全体やメソッドチェーンのstub、テスト対象のstub、未検証double、例外の指定漏れ、setupの上書き、matcherの書き忘れを検査します。[7 copの名前と個別OFF](docs/rules.md#rspecセット明示導入)。
+## レビュー: 何を避けるか
 
-### ERB: 利用するアプリで設定する
+- controllerやcontroller concernに料金計算・承認条件が埋まる
+- 別tenantの取得、jobや直接更新による不変条件・認可の迂回が起きる
+- 一部だけ保存される、保存失敗を成功扱いする、rollbackした処理の通知が出る
+- callback・validation・描画に操作固有の複雑な手順や外部I/Oが隠れる
+- 表示する行が増えるほどqueryや状態変更が増える
+- 薄い転送クラスや曖昧な名前で、理解するために追う場所だけが増える
+- stubやUIテストだけで、重要な状態・失敗・権限を見逃す
 
-ERBを使う場合は`erb_lint ~> 0.9`を開発依存へ追加し、`bundle exec tsurakunai-rails install-view-lint`で標準の入力検査を配置します。検証は`check --views -- <テストコマンド>`で実行します。設定後も`--views`なしでは未検査です。[導入とstrict localsの対応条件](docs/view-inputs.md)を確認してください。ViewComponentを強制・変換するlintではありません。
+callback、Concern、partial、Currentの存在だけでは違反にしません。具体的な経路・結果・保守負担を確認します。設計上の指摘と不具合は分け、未計測の性能を断定しません。[共通資料の対応表・例外](skills/tsurakunai-rails/references/daily-design.md)
 
-[全copの設定と例外](docs/rules.md)。自動修正は無効です。
+## 自動検査の役割
+
+**スキルは文脈を判断し、lintは構文を検出します。** POROやViewComponentがないこと、modelが長いことをlintの合否にしません。
+
+- **標準の設計7 cop**: modelのHTTP状態参照、default_scope、validationを省略する更新、enumのDB値、保存結果、関連削除、一意indexを検査。業務上の例外は許可名・対象範囲・個別OFFで調整する
+- **補助の事故防止8 cop**: AR API上書き、関連・commit callback・enumの重複、migrationの誤指定、HTTP本文の不整合を検査する
+- **RSpec7 cop**: specファイルのstub・double・期待・setupの誤りを補助検査する。RSpec本体の導入やMinitestの変更は要求しない
+- **ERB**: `erb_lint ~> 0.9`と`install-view-lint`の設定を導入し、`check --views -- <テストコマンド>`で入力と構文を検査する。`--views`なしでは未検査
+- **任意のControllerCallbacks**: callback全面禁止を選ぶ場合だけON。標準では、単純なlifecycle処理と隠れた業務フローをスキルで区別する
+
+推奨するlintは標準ON、不要なcopは`.rubocop.yml`で個別OFFにできます。旧`config/policies.yml`はcallback全面禁止を含む厳格presetとして残しています。[全cop・制限・例外](docs/rules.md)。自動修正は無効です。
 
 ## ドキュメント
 
-- [導入と使い方](docs/installation.md)
-- [既存アプリへの導入・更新](docs/adoption.md)
-- [実際のRailsアプリを使った検証](docs/acceptance.md)
-- [開発とテスト](docs/development.md)
-- [ルールを追加する基準](docs/design.md) / [リリース手順](docs/releasing.md)
+- [導入と更新](docs/installation.md) / [既存アプリでの確認](docs/adoption.md)
+- [実Railsアプリの検証と限界](docs/acceptance.md)
+- [開発とテスト](docs/development.md) / [設計判断の評価](docs/design.md)
+- [リリース手順](docs/releasing.md)
 
 Ruby 3.0以上、RuboCop 1.74.0以上・2未満に対応。RubyGemsには未公開です。[MIT License](LICENSE)

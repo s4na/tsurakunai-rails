@@ -21,6 +21,13 @@ RSpec.describe Tsurakunai::Rails::CLI do
         expect(stdout).to include(installed)
         expect(File.read(File.join(installed, "SKILL.md"))).to include("name: tsurakunai-rails")
         expect(File).to exist(File.join(installed, "references", "review.md"))
+        %w[tsurakunai-rails-implement tsurakunai-rails-review].each do |name|
+          expect(File.read(File.join(project, directory, "skills", name, "SKILL.md"))).to include("name: #{name}")
+        end
+        _, validation_error, validation_status = Open3.capture3(
+          RbConfig.ruby, File.expand_path("../script/validate_skill.rb", __dir__), File.join(project, directory, "skills")
+        )
+        expect(validation_status.success?).to be(true), validation_error
         skill = File.join(installed, "SKILL.md")
         File.write(skill, "local edits")
         _, stderr, status = cli("install-skill", "--target", target, "--project", project)
@@ -28,6 +35,35 @@ RSpec.describe Tsurakunai::Rails::CLI do
         expect(stderr).to include("Already exists")
         expect(File.read(skill)).to eq("local edits")
       end
+    end
+  end
+
+  %w[codex claude].each do |target|
+    it "does not partially install when a sibling #{target} skill already exists" do
+      Dir.mktmpdir do |project|
+        directory = target == "codex" ? ".agents" : ".claude"
+        parent = File.join(project, directory, "skills")
+        existing = File.join(parent, "tsurakunai-rails-review")
+        FileUtils.mkdir_p(existing)
+        File.write(File.join(existing, "SKILL.md"), "local review instructions")
+        _, stderr, status = cli("install-skill", "--target", target, "--project", project)
+        expect(status.exitstatus).to eq(2)
+        expect(stderr).to include("Already exists")
+        expect(Dir.children(parent)).to eq(["tsurakunai-rails-review"])
+        expect(File.read(File.join(existing, "SKILL.md"))).to eq("local review instructions")
+      end
+    end
+  end
+
+  it "reports a missing shared reference in an installed skill set" do
+    Dir.mktmpdir do |project|
+      _, stderr, status = cli("install-skill", "--target", "codex", "--project", project)
+      expect(status.success?).to be(true), stderr
+      root = File.join(project, ".agents", "skills")
+      File.unlink(File.join(root, "tsurakunai-rails", "references", "data.md"))
+      _, error, result = Open3.capture3(RbConfig.ruby, File.expand_path("../script/validate_skill.rb", __dir__), root)
+      expect(result.exitstatus).to eq(1)
+      expect(error).to include("Invalid or missing reference", "data.md")
     end
   end
 

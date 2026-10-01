@@ -128,7 +128,7 @@ RSpec.describe "Focused upstream rules through the public plugin" do
       rspec = cops.select { |name, config| name.start_with?("RSpec/") && config["Enabled"] == true }.keys
       expect(rails).to match_array(rails_cases.keys.map { |name| "Rails/#{name}" })
       custom = cops.select { |name, config| name.start_with?("TsurakunaiRails/") && config["Enabled"] == true }.keys
-      expect(custom).to match_array(%w[ControllerCallbacks DefaultScope ValidationBypass ModelRequestContext].map { |name| "TsurakunaiRails/#{name}" })
+      expect(custom).to match_array(%w[DefaultScope ValidationBypass ModelRequestContext].map { |name| "TsurakunaiRails/#{name}" })
       expect(rspec).to match_array(rspec_cases.keys.map { |name| "RSpec/#{name}" })
 
       File.open(File.join(project, ".rubocop.yml"), "a") do |file|

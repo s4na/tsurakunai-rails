@@ -18,7 +18,7 @@ def update
 end
 ```
 
-これは構造の例。`require_login`がredirectするだけならreturnするか例外を使って処理を止める必要がある。実際の認証ライブラリの規約に従う。認証・認可が元と同じ対象の全actionで必ず動くことをrequest testで確認する。ApplicationControllerやconcernのcallbackも追う。認証基盤などで必要なcallbackはAllowedMethodsや個別OFFで維持する。上の明示呼び出し例は、標準方針に合わせて移行を選んだ場合の候補であり、全actionの認証・認可を保つことが前提である。
+これは構造の例。`require_login`がredirectするだけならreturnするか例外を使って処理を止める必要がある。実際の認証ライブラリの規約に従う。認証・認可が元と同じ対象の全actionで必ず動くことをrequest testで確認する。ApplicationControllerやconcernのcallbackも追う。認証基盤などで必要なcallbackは標準で許容する。全面禁止を選んだ導入先ではAllowedMethodsで残せる。上の明示呼び出し例は、処理順を追いやすくするために移行を選んだ場合の候補であり、全actionの認証・認可を保つことが前提である。
 
 ## validationとDB制約
 

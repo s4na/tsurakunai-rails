@@ -2,7 +2,7 @@
 
 再利用partialの入力を明示し、渡し忘れは描画時に失敗させる。controllerの失敗経路まで表示をテストする。この三つを組み合わせて、レビューする人が暗黙の変数を毎回探す負担を減らします。この入力規約を採用したいチーム向けの任意セットです。単一action専用のpartialが正しい対象を表示しているなら、instance variableの存在だけで移行を要求しません。
 
-新しい再利用UIには[ViewComponentを優先する方針](../skills/tsurakunai-rails/references/daily-design.md#viewcomponent優先)を適用します。このERBセットは既存partialや例外として残すERB向けです。componentの採用を自動判定したり、partialを変換したりはしません。
+[共通の設計判断](../skills/tsurakunai-rails/references/daily-design.md#callbackcurrent表示)に沿って、明示入力のpartialや利益のあるcomponentを選びます。このERBセットはpartialの入力契約を補助するものです。componentの採用を自動判定したり、partialを変換したりはしません。
 
 ## 設定して一度に検証する
 
