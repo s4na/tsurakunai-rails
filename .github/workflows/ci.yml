@@ -29,9 +29,10 @@ jobs:
       BUNDLE_IGNORE_CONFIG: '1'
       BUNDLE_FROZEN: 'false'
       ACTIONVIEW_VERSION: ${{ matrix.rubocop == 'latest' && '>= 7.1' || '~> 7.1.0' }}
+      SQLITE_VERSION: ${{ matrix.rubocop == 'latest' && '~> 2.0' || '~> 1.4' }}
       RUBOCOP_VERSION: ${{ matrix.rubocop == 'latest' && '>= 1.72.1' || '= 1.72.1' }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.3.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1
@@ -56,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.3.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install pinned actionlint with checksum verification
