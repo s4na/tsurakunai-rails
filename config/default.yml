@@ -1,7 +1,10 @@
+inherit_from: rspec.yml
+
 plugins:
   - rubocop-rails
+  - rubocop-rspec
 
-# A focused baseline; upstream Rails styles are not enabled wholesale.
+# Opinionated design defaults; unrelated upstream styles remain disabled.
 Rails:
   Enabled: false
 
@@ -27,17 +30,17 @@ Rails/EnumUniqueness:
   Enabled: true
   AutoCorrect: false
 Rails/EnumHash:
-  Enabled: false
+  Enabled: true
   AutoCorrect: false
 Rails/SaveBang:
-  Enabled: false
+  Enabled: true
   AutoCorrect: false
   AllowImplicitReturn: true
 Rails/HasManyOrHasOneDependent:
-  Enabled: false
+  Enabled: true
   AutoCorrect: false
 Rails/UniqueValidationWithoutIndex:
-  Enabled: false
+  Enabled: true
   AutoCorrect: false
 Rails/UnusedRenderContent:
   Enabled: true
@@ -45,7 +48,7 @@ Rails/UnusedRenderContent:
 
 TsurakunaiRails/ControllerCallbacks:
   Description: Make controller execution order explicit.
-  Enabled: false
+  Enabled: true
   VersionAdded: '0.1'
   AllowedMethods: []
   Include:
@@ -54,21 +57,21 @@ TsurakunaiRails/ControllerCallbacks:
 
 TsurakunaiRails/DefaultScope:
   Description: Make query filtering and creation defaults explicit.
-  Enabled: false
+  Enabled: true
   VersionAdded: '0.1'
   Include:
     - '**/app/models/**/*.rb'
 
 TsurakunaiRails/ValidationBypass:
   Description: Review writes which explicitly skip validation.
-  Enabled: false
+  Enabled: true
   VersionAdded: '0.1'
   Include:
     - '**/app/models/**/*.rb'
 
 TsurakunaiRails/ModelRequestContext:
   Description: Keep HTTP request context out of persistence and business behavior.
-  Enabled: false
+  Enabled: true
   VersionAdded: '0.1'
   AllowedMethods: []
   Include:

@@ -1,4 +1,4 @@
-# Opt-in policies: enable individual rules only after choosing the convention.
+# Compatibility entry point: these policies are now enabled by default.
 TsurakunaiRails/ControllerCallbacks:
   Enabled: true
 TsurakunaiRails/DefaultScope:
