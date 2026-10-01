@@ -58,7 +58,7 @@ update_columns(updated_at: Time.current)
 | --- | --- | --- |
 | `current_account.invoices.find(id)`を`Invoice.find(id)`へ変更 | current accountの定義、認可policy、他accountのIDでのrequest。成功し、他accountの行が更新されれば漏えい・改ざん | 認可済みrelationから取得する。global find後に対象の認可を確実に行う実装ならglobal findだけで指摘しない |
 | permitに`account_id`や`owner_id`を追加 | 属性の意味、所有権移転の認可、request後のreload。同じ利用者が任意の所属へ移せれば認可の迂回 | 移転を許可しない通常更新ではpermitから外す。認可した移転専用操作は認める |
-| validation失敗後に`reload`・`find`・`new`してrender | 保存戻り値、表示に使うobject、実際のHTML。errorsや入力値が消えて再入力が必要になる | 保存に失敗したobjectをそのまま描画する。成功後のreloadや、意図的な入力破棄は欠陥ではない |
+| validation失敗後に`reload`・`find`・`new`してrender | 保存戻り値、表示に使うobject、実際のHTML。reloadで入力値がDBの値へ戻る、または別objectへの置換でerrorsが消えて再入力が必要になる | 保存に失敗したobjectをそのまま描画する。成功後のreloadや、意図的な入力破棄は欠陥ではない |
 | validationをcontrollerへ移す・modelから削る | その条件が全入口の不変条件か、job/console等の公開操作とDB制約。requestでは拒否するが直接保存は不正値を受け入れる | modelまたはDBで必要な条件を保つ。画面だけの確認欄をformへ移すのは正当 |
 | collectionや別actionがpartialを使う | `render`のcollection/as/localsとpartial内の変数。異なる2行を描画し、両方に同じ`@invoice`の値が出る | 対象recordのlocalを読む。単一actionの用意済みinstance variableはそのままでよい |
 

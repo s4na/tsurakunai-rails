@@ -20,7 +20,7 @@ bundle exec ruby script/acceptance.rb
 | 変更する箇所 | 観測する失敗 | 標準RuboCopの検出 | 文脈／実行での確認 |
 | --- | --- | --- | --- |
 | account内のfindをglobal findへ変更 | 他accountの行を更新できる | なし | requestとreload |
-| 保存失敗後にreloadしてrender | errorsと入力値が消える | なし | 422のHTMLとDB状態 |
+| 保存失敗後にreloadしてrender | 入力値がDBの値へ戻る | なし | 422のHTMLとDB状態 |
 | modelの金額validationを削除 | 負の金額を保存し成功と返す | なし | requestとDB状態 |
 | 同名のafter_create_commitとafter_update_commitへ分割 | create時の通知が消える | `Rails/AfterCommitOverride` | model公開APIと通知回数 |
 | collection partialでlocalの代わりに@invoiceを読む | 2行目にも1行目のmemoが出る | なし | 一覧の実際の描画。任意ERBセットでも検出 |
@@ -32,7 +32,7 @@ CIではこの検証をテストとして実行します。さらに`script/pack
 
 ## スキルの判断品質
 
-上のうち静的検査が通るケースは、[スキルの具体例](../skills/tsurakunai-rails/references/review.md#lintを通過する失敗の追い方)で取得範囲・入力・保存結果・描画結果を追います。正常な対例について、不要なservice抽出、callback削除、全local化を要求しないことも独立レビューで確認します。
+上のうち静的検査が通るケースは、[スキルの具体例](../skills/tsurakunai-rails/references/review.md#lintを通過する失敗の追い方)で取得範囲・入力・保存結果・描画結果を追います。独立レビューでは、正解や期待する指摘数を渡さず、6つの回帰と3つの正常なコード例をスキルで判断しました。6つの具体的な問題を特定し、正常な認証callback、単一actionのpartialでのinstance variable、HTTPと無関係なmodelのparams属性には修正を要求しませんでした。この1回の評価で検出漏れ・不要な指摘はありませんでした。
 
 CIはAIレビューを自動実行しません。独立レビューの観測結果はPRへ記録し、モデル全般の検出率や将来の判断を保証したとは扱いません。
 
