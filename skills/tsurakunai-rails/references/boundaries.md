@@ -1,8 +1,10 @@
 # 境界・副作用・情報の扱い
 
-ここでの改善・検証は、変更に関係する具体的な失敗がある場合の候補です。記載された形を全コードへ要求せず、契約を満たす既存実装と既存のテストを尊重します。
+変更に関係する項目だけを確認してください。問題が起きていない実装や、必要な動作を確認できているテストまで書き換える必要はありません。
 
-## S01 認証・認可・テナント
+<a id="s01-認証認可テナント"></a>
+
+## 認証・認可とアカウントごとのデータ取得
 
 ```ruby
 # 問題候補: 別accountのIDも取得できる
@@ -16,7 +18,9 @@ authorize_invoice!(invoice, :update)
 
 **検証**: 未認証、別account、権限のない役割の入力で読む・更新することを拒否し、DB状態・外部副作用が変化しないことを確認する。実証なしに脆弱性と断定しない。Deviseの必須callbackを削除すること自体を目的にしない。
 
-## S02 入力・SQL・出力
+<a id="s02-入力sql出力"></a>
+
+## 入力値をSQLやHTMLへ渡すときの確認
 
 ```ruby
 # 問題: 任意属性・任意のSQLを外部入力で渡す
@@ -35,21 +39,25 @@ current_account.invoices.order(sort)
 
 **検証**: account_idや承認状態の追加入力で権限を越せないこと、未知のsortが安全な既定値または拒否になること、危険なHTMLの出力を確認する。
 
-## S06 外部副作用・ジョブ
+<a id="s06-外部副作用ジョブ"></a>
 
-**つらい状況**: transaction内の課金は成功したが後のDB更新が失敗する。rollback前にenqueueしたjobが存在しない行を読む。commit後に送信する構造へ直しても、送信前のプロセス停止で通知が失われる。
+## 外部APIとジョブの失敗・再実行
 
-**判断と改善**: 当該Rails version、queue adapter、enqueueのcommit待ちの設定を確認し、動作を推測しない。外部副作用はDB rollbackで戻らない。業務の保証に応じてcommit後の処理、永続job、outbox、外部APIの冪等キーを選ぶ。IDなどをjobへ渡し、実行時の削除・状態変更・tenant scopeを扱う。retry範囲を決め、一時エラーと永続エラーを分ける。callbackの重複登録で片方が消える問題は標準copでも検出する。
+**起きやすい問題**: transaction内の課金は成功したが後のDB更新が失敗する。rollback前にenqueueしたjobが存在しない行を読む。commit後に送信する構造へ直しても、送信前のプロセス停止で通知が失われる。
+
+**確認すること**: 当該Rails version、queue adapter、enqueueのcommit待ちの設定を確認し、動作を推測しない。外部副作用はDB rollbackで戻らない。業務の保証に応じてcommit後の処理、永続job、outbox、外部APIの冪等キーを選ぶ。IDなどをjobへ渡し、実行時の削除・状態変更・tenant scopeを扱う。retry範囲を決め、一時エラーと永続エラーを分ける。callbackの重複登録で片方が消える問題は標準copでも検出する。
 
 **例外**: 重要性が低く再生成できる通知へ決済と同じ配信保証を要求しない。`after_commit`は正当なlifecycle hookになり得るが、それだけで配信保証や冪等性が成立したとしない。
 
 **検証**: rollback、enqueue/送信失敗、同一jobの再実行、対象削除、外部APIが成功した後でのtimeoutを確認する。同じ課金や業務更新が二度成立しないことを境界の値とDB状態で確認する。
 
-## S11 cache・ログ・秘密
+<a id="s11-cacheログ秘密"></a>
 
-**つらい状況**: `Rails.cache.fetch("invoices")`がaccount間で共有され、別accountのデータを返す。認可前のcache結果をそのまま表示する。決済tokenや個人情報をparams・例外・job引数ごとログへ出す。
+## キャッシュの更新とログへの情報漏えい
 
-**判断と改善**: cacheの値が依存するtenant・user・権限・locale・versionをkeyまたは別の隔離で表現する。認可はcache hitでも維持する。更新・削除時の失効とstaleの許容範囲を決める。ログは障害調査に必要なID・状態を残し、秘密の値そのものを残さない。`filter_parameters`が独自ログ・外部監視・job payloadまで覆うとは限らない。credentialをfixtureへコピーしない。
+**起きやすい問題**: `Rails.cache.fetch("invoices")`がaccount間で共有され、別accountのデータを返す。認可前のcache結果をそのまま表示する。決済tokenや個人情報をparams・例外・job引数ごとログへ出す。
+
+**確認すること**: cacheの値が依存するtenant・user・権限・locale・versionをkeyまたは別の隔離で表現する。認可はcache hitでも維持する。更新・削除時の失効とstaleの許容範囲を決める。ログは障害調査に必要なID・状態を残し、秘密の値そのものを残さない。`filter_parameters`が独自ログ・外部監視・job payloadまで覆うとは限らない。credentialをfixtureへコピーしない。
 
 **例外**: 全利用者が同じ値を見る公開cacheならuser keyは不要。個人情報を全く観測できなくすることで必要な監査を壊さない。要求される保管・アクセス制御を確認する。
 

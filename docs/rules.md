@@ -2,11 +2,11 @@
 
 標準8ルール、任意の設計方針8ルール、RSpec向け7ルール、文脈が必要な18領域を扱います。既存copはRuboCop Rails / RSpecを利用し、同じ検査を再実装しません。標準セットはplugin読み込みだけで有効になります。RSpecセットは `config/rspec.yml` の明示的な導入が必要です。
 
-構文検査が指摘するのはリスクの入口です。型・業務・データ・呼び出し元を確認して修正または例外を判断します。新しいDB制約・削除・例外を機械的に導入しません。導入先の明示設定が優先されます。
+lintの指摘だけでは不具合と断定できません。実際の型、データ、呼び出し元を確認して修正の要否を判断します。新しいDB制約・削除・例外を機械的に導入しません。導入先の明示設定が優先されます。
 
 ## 標準セット
 
-| cop | 防ぎたい事故 | 対応と境界 |
+| cop | 防ぎたい事故 | 直すときの注意 |
 | --- | --- | --- |
 | Rails/ActiveRecordOverride | 標準の永続化APIの契約が上書きされる | lifecycle契約を維持する。model callbackを全部禁止しない |
 | Rails/DuplicateAssociation | 同名の関連の定義が消える | 意図を一つに整理。継承を含む別ファイルの競合はレビュー |
@@ -21,7 +21,7 @@
 
 以下は構文の存在だけでは不具合を確定できないため、初期無効です。必要なcopだけ個別に `Enabled: true` を設定します。全8方針を採用すると決めた場合は `inherit_gem: rubocop-tsurakunai-rails: config/policies.yml` で導入できます。未採用ならこの方針に合わせる修正・例外コメントは不要です。
 
-| cop | 防ぎたい事故 | 対応と境界 |
+| cop | 防ぎたい事故 | 直すときの注意 |
 | --- | --- | --- |
 | TsurakunaiRails/ControllerCallbacks | actionの認可・ロード・副作用の順序が追えない | callbackを使わない方針を選んだチームだけ。通常の認証・ロードも検出する |
 | TsurakunaiRails/ModelRequestContext | modelがHTTPの暗黙の状態を必要とし、job等から使えない | HTTP依存を明示する方針を選ぶ場合だけ。同名業務属性は区別できない |
@@ -34,11 +34,13 @@
 
 独自copは自動修正を実装しません。追加した上流copで自動修正を持つものもこのセットでは `AutoCorrect: false` にしています。修正後の仕様・安全性をレビューするためです。方針セットでも自動修正は無効です。`SaveBang`は型を推論せず、代入・引数・暗黙の戻り値などの全経路を保証しないため、永続化の結果を呼び出し元まで追います。
 
-`ModelRequestContext`はmodel内のreceiverなしまたは `self` の `params` / `session` / `cookies` / `flash` / `request` / `response` / `current_user` / `current_account` 呼び出しを対象とします。ローカル変数・引数や別objectの同名APIは対象外です。これらが正当な業務属性なら `AllowedMethods` で名前を許可します。HTTP objectの引数渡しや `Current` への依存などは意味的レビューで判断します。
+独自のcontrollerルールは`app/controllers/**/*.rb`、modelルールは`app/models/**/*.rb`を対象にします。concernも含みます。別の配置を使う場合は`Include`を上書きしてください。継承関係やreceiverの型は推論せず、同名の独自APIを検出することがあります。動的な`send`、別レイヤー、bulk処理、動的optionsはコードレビューで確認します。
+
+`ModelRequestContext`はmodel内のreceiverなしまたは `self` の `params` / `session` / `cookies` / `flash` / `request` / `response` / `current_user` / `current_account` 呼び出しを対象とします。ローカル変数・引数や別objectの同名APIは対象外です。これらが正当な業務属性なら `AllowedMethods` で名前を許可します。HTTP objectの引数渡しや `Current` への依存などはコードレビューで判断します。
 
 ## RSpecセット（明示導入）
 
-| cop | 防ぎたい事故 | 対応と境界 |
+| cop | 防ぎたい事故 | 直すときの注意 |
 | --- | --- | --- |
 | RSpec/AnyInstance | 別のinstanceまでstubされ、不正な動作が隠れる | 対象instanceまたは外部境界を明示 |
 | RSpec/MessageChain | 内部の呼び出し構造に依存し、状態の不具合を見逃す | 公開APIと結果を検証。境界の必要なstubは許可 |
@@ -54,30 +56,32 @@ Minitestでも、stubで業務の保証を消さないこと、期待する例�
 
 [導入手順](view-inputs.md)の設定で、partialの暗黙の入力（TsurakunaiPartialInputs）と解析エラー（ParserErrors）を検査します。対応するRailsでは入力宣言（StrictLocals）も選べます。書式のルールは含めません。Rubyの標準8ルールとは別のERB Lintで実行し、入力の渡し忘れは実際の描画でも検証します。
 
-## 意味的レビューの18領域
+<a id="意味的レビューの18領域"></a>
 
-| ID・領域 | 最低限追う証拠 | 判断集 |
+## コードレビューで確認すること
+
+| 確認すること | 確認箇所 | 詳細 |
 | --- | --- | --- |
-| S01 認証・認可・テナント | 取得scope、全entrypoint、別accountの拒否と状態不変 | [境界](../skills/tsurakunai-rails/references/boundaries.md#s01-認証認可テナント) |
-| S02 入力・SQL・出力 | 許可する属性とsort、query bind、HTMLの信頼境界 | [境界](../skills/tsurakunai-rails/references/boundaries.md#s02-入力sql出力) |
-| S03 DB整合性 | schema、unique/FK/NULL、違反時の業務応答 | [データ](../skills/tsurakunai-rails/references/data.md#s03-db整合性) |
-| S04 関連と削除 | 親子の寿命、監査、制約、件数、削除の失敗 | [データ](../skills/tsurakunai-rails/references/data.md#s04-関連と削除) |
-| S05 更新結果・transaction | 保存結果、例外のscope、rollback時の状態 | [データ](../skills/tsurakunai-rails/references/data.md#s05-更新結果transaction) |
-| S06 外部副作用・ジョブ | commit、enqueue失敗、再試行、二重実行、冪等キー | [境界](../skills/tsurakunai-rails/references/boundaries.md#s06-外部副作用ジョブ) |
-| S07 競合・状態遷移 | 複数request、atomic更新、ロック、衝突の応答 | [データ](../skills/tsurakunai-rails/references/data.md#s07-競合状態遷移) |
-| S08 migrationとdeploy | 現データ、旧新コードの共存、backfill、復旧 | [データ](../skills/tsurakunai-rails/references/data.md#s08-migrationとdeploy) |
-| S09 query・一覧・バッチ | 件数、query数、順序、取得範囲、メモリ | [運用とテスト](../skills/tsurakunai-rails/references/testing.md#s09-query一覧バッチ) |
-| S10 時刻・日付・金額 | 業務zone、日付境界、precision、通貨、丸め | [運用とテスト](../skills/tsurakunai-rails/references/testing.md#s10-時刻日付金額) |
-| S11 cache・ログ・秘密 | tenant/userを含むkey、失効、PIIとtoken | [境界](../skills/tsurakunai-rails/references/boundaries.md#s11-cacheログ秘密) |
-| S12 テストの信頼性 | 公開APIの結果、失敗時の状態、fixture、順序と時刻 | [運用とテスト](../skills/tsurakunai-rails/references/testing.md#s12-テストの信頼性) |
-| S13 controllerの入口と出口 | permit・認可・操作・結果の対応、業務条件の重複 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s13-コントローラはhttpの入口と出口を扱う) |
-| S14 modelの不変条件 | 全入口の条件、状態遷移、HTTP依存、callbackの局所性 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s14-モデルはデータと業務の不変条件を保つ) |
-| S15 複数modelの業務処理 | 自然な集約、transaction、成功と失敗、actorの契約 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s15-複数モデルの業務処理に明示的な入口を作る) |
-| S16 入力・検索・表示の境界 | UI専用の条件と保存条件、queryのscope、表示の副作用 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s16-入力検索表示を永続モデルへ押し込まない) |
-| S17 viewとpartialの入力 | renderの全入口、locals、必須/optional、validation失敗の表示 | [ビュー](../skills/tsurakunai-rails/references/views.md#s17-ビューとpartialの入力を明示する) |
-| S18 描画の取得と副作用 | helper内部、tenant scope、N+1、状態変更、共有objectの変更 | [ビュー](../skills/tsurakunai-rails/references/views.md#s18-描画で業務処理とデータ取得を隠さない) |
+| 認証・認可とアカウントごとのデータ取得 | 取得scope、全呼び出し経路、別accountの拒否と状態不変 | [境界](../skills/tsurakunai-rails/references/boundaries.md#s01-認証認可テナント) |
+| 入力値をSQLやHTMLへ渡すときの確認 | 許可する属性とsort、query bind、HTMLの信頼境界 | [境界](../skills/tsurakunai-rails/references/boundaries.md#s02-入力sql出力) |
+| validationとDB制約の対応 | schema、unique/FK/NULL、違反時の業務応答 | [データ](../skills/tsurakunai-rails/references/data.md#s03-db整合性) |
+| 親を削除するときの関連データの扱い | 親子の寿命、監査、制約、件数、削除の失敗 | [データ](../skills/tsurakunai-rails/references/data.md#s04-関連と削除) |
+| 保存に失敗したときの処理とトランザクション | 保存結果、例外のscope、rollback時の状態 | [データ](../skills/tsurakunai-rails/references/data.md#s05-更新結果transaction) |
+| 外部APIとジョブの失敗・再実行 | commit、enqueue失敗、再試行、二重実行、冪等キー | [境界](../skills/tsurakunai-rails/references/boundaries.md#s06-外部副作用ジョブ) |
+| 同時更新と状態変更 | 複数request、atomic更新、ロック、衝突の応答 | [データ](../skills/tsurakunai-rails/references/data.md#s07-競合状態遷移) |
+| migrationとデプロイの順序 | 現データ、旧新コードの共存、backfill、復旧 | [データ](../skills/tsurakunai-rails/references/data.md#s08-migrationとdeploy) |
+| クエリ・ページング・バッチ処理 | 件数、query数、順序、取得範囲、メモリ | [運用とテスト](../skills/tsurakunai-rails/references/testing.md#s09-query一覧バッチ) |
+| 時刻・日付・金額の扱い | 業務zone、日付境界、precision、通貨、丸め | [運用とテスト](../skills/tsurakunai-rails/references/testing.md#s10-時刻日付金額) |
+| キャッシュの更新とログへの情報漏えい | tenant/userを含むkey、失効、PIIとtoken | [境界](../skills/tsurakunai-rails/references/boundaries.md#s11-cacheログ秘密) |
+| 不具合を見逃さないテスト | 公開APIの結果、失敗時の状態、fixture、順序と時刻 | [運用とテスト](../skills/tsurakunai-rails/references/testing.md#s12-テストの信頼性) |
+| コントローラで扱う処理 | permit・認可・操作・結果の対応、業務条件の重複 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s13-コントローラはhttpの入口と出口を扱う) |
+| モデルで守るデータの条件 | 全入口の条件、状態遷移、HTTP依存、callbackの局所性 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s14-モデルはデータと業務の不変条件を保つ) |
+| 複数モデルをまとめて更新する処理 | 自然な集約、transaction、成功と失敗、actorの契約 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s15-複数モデルの業務処理に明示的な入口を作る) |
+| 入力・検索・表示を分ける目安 | UI専用の条件と保存条件、queryのscope、表示の副作用 | [責務](../skills/tsurakunai-rails/references/responsibilities.md#s16-入力検索表示を永続モデルへ押し込まない) |
+| ビューとpartialへ渡す値 | renderの全入口、locals、必須/optional、validation失敗の表示 | [ビュー](../skills/tsurakunai-rails/references/views.md#s17-ビューとpartialの入力を明示する) |
+| ビューやhelper内のDBアクセスと更新 | helper内部、tenant scope、N+1、状態変更、共有objectの変更 | [ビュー](../skills/tsurakunai-rails/references/views.md#s18-描画で業務処理とデータ取得を隠さない) |
 
-すべてを全変更に要求しません。変更した振る舞い・データ・entrypointに該当する領域を選び、根拠が足りない部分は未検証として記録します。
+すべてを全変更に要求しません。変更した振る舞い・データ・呼び出し経路に該当する領域を選び、根拠が足りない部分は未検証として記録します。
 
 ## 上流の仕様
 

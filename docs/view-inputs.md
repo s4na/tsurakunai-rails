@@ -44,6 +44,6 @@ bundle exec tsurakunai-rails check --views -- bin/rails test
 
 ## 自動検査で残る部分
 
-validation失敗時の変数不足、tenantの取得範囲、helper内部のN+1、描画によるDB更新や外部副作用は、変数名の検査だけで判定できません。[スキルのビュー判断集](../skills/tsurakunai-rails/references/views.md)で該当する呼び出し元を追い、実際のrequest/renderで結果を確認します。cache hitだけで確認を終えず、必要に応じてmiss・再描画も確認します。
+validation失敗時の変数不足、tenantの取得範囲、helper内部のN+1、描画によるDB更新や外部副作用は、変数名の検査だけで判定できません。[ビューのレビューガイド](../skills/tsurakunai-rails/references/views.md)で該当する呼び出し元を追い、実際のrequest/renderで結果を確認します。cache hitだけで確認を終えず、必要に応じてmiss・再描画も確認します。
 
 ERB Lintの役割・設定・狭い例外は[公式ドキュメント](https://github.com/Shopify/erb_lint)、strict localsの振る舞いは[Rails Action View](https://guides.rubyonrails.org/action_view_overview.html#strict-locals)を確認します。
