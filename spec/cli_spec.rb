@@ -55,9 +55,10 @@ RSpec.describe Tsurakunai::Rails::CLI do
       log = File.join(project, "lint.log")
       result = File.join(project, "test.txt")
       literal = "$(touch should-not-exist); `touch other-file`"
-      _, stderr, status = cli("check", "--", RbConfig.ruby, "-e", "File.write(ARGV[0], ARGV[1])", result, literal,
+      stdout, stderr, status = cli("check", "--", RbConfig.ruby, "-e", "File.write(ARGV[0], ARGV[1])", result, literal,
                              chdir: project, env: { "PATH" => "#{bin}:#{ENV.fetch('PATH')}", "LINT_LOG" => log })
       expect(status.exitstatus).to eq(1), stderr
+      expect(stdout).to include("Ruby lint: FAIL (exit 1)", "View lint: SKIPPED", "Tests: PASS")
       expect(File.read(log).strip).to eq("exec rubocop --plugin rubocop-tsurakunai-rails")
       expect(File.read(result)).to eq(literal)
       expect(File).not_to exist(File.join(project, "should-not-exist"))
@@ -75,6 +76,7 @@ RSpec.describe Tsurakunai::Rails::CLI do
         stdout, _, status = cli("check", "--", RbConfig.ruby, "-e", "exit #{test_status}",
                                 env: { "PATH" => "#{bin}:#{ENV.fetch('PATH')}" })
         expect(status.exitstatus).to eq(test_status)
+        expect(stdout).to include("Ruby lint: PASS", test_status.zero? ? "Tests: PASS" : "Tests: FAIL (exit 1)")
         expect(stdout).to include("Design review still required")
       end
     end
@@ -87,10 +89,25 @@ RSpec.describe Tsurakunai::Rails::CLI do
       executable = File.join(bin, "bundle")
       File.write(executable, "#!/bin/sh\nexit 0\n")
       File.chmod(0o755, executable)
-      _, _, status = cli("check", "--", "touch injected; echo success", chdir: project,
+      stdout, _, status = cli("check", "--", "touch injected; echo success", chdir: project,
                          env: { "PATH" => "#{bin}:#{ENV.fetch('PATH')}" })
       expect(status.exitstatus).to eq(1)
+      expect(stdout).to include("Tests: FAIL (could not start command)")
       expect(File).not_to exist(File.join(project, "injected"))
+    end
+  end
+
+  it "reports a signaled test process as a failed test stage" do
+    Dir.mktmpdir do |project|
+      bin = File.join(project, "bin")
+      Dir.mkdir(bin)
+      executable = File.join(bin, "bundle")
+      File.write(executable, "#!/bin/sh\nexit 0\n")
+      File.chmod(0o755, executable)
+      stdout, _, status = cli("check", "--", RbConfig.ruby, "-e", "Process.kill('TERM', Process.pid)",
+                              env: { "PATH" => "#{bin}:#{ENV.fetch('PATH')}" })
+      expect(status.exitstatus).to eq(1)
+      expect(stdout).to include("Ruby lint: PASS", "Tests: FAIL (signal 15)")
     end
   end
 

@@ -19,7 +19,7 @@ group :development, :test do
 end
 ```
 
-このPRの検証中は `branch: "codex/rails-harness"` を使ってください。マージ後は `main` に変更します。既存のRuboCop設定（`.rubocop.yml`）に、次のplugin設定を追加します。Railsの `rubocop-rails-omakase` を使っている場合も、その設定を残して追加します。
+`.rubocop.yml`に次のplugin設定を追加します。設定ファイルがなければ、この内容で作成できます。Rails Omakase等の別のルールセットは必要ありません。既存の設定がある場合は、その内容を残して追加してください。
 
 ```yaml
 # .rubocop.yml
@@ -41,6 +41,8 @@ Codexでは `.agents/skills/tsurakunai-rails/`、Claude Codeでは `.claude/skil
 
 ## 使う
 
+既存アプリへの段階導入は[導入ガイド](docs/adoption.md)、具体的に何を検出できたかは[実用検証](docs/acceptance.md)を参照してください。
+
 ```sh
 # Minitest。プロジェクトで実際に使っているテスト入口を指定する。
 bundle exec tsurakunai-rails check -- bin/rails test
@@ -51,6 +53,8 @@ bundle exec rubocop --only TsurakunaiRails,Rails
 ```
 
 `check`はこのpluginを明示的に読み込み、lintが失敗してもテストを実行します。両方成功なら0、どちらか失敗なら1、引数や導入先が不正なら2を返します。テストコマンドはシェル展開せず実行するため、パイプやリダイレクトは使えません。
+
+Ruby lint・View lint・Testsごとの結果を表示します。`View lint: SKIPPED`は未検査を表し、成功には数えません。viewを含む検査が必要なら、任意ERBセットを導入して`--views`を指定します。
 
 続けてCodexで `$tsurakunai-rails この変更を実装・検証してください`、Claude Codeで `/tsurakunai-rails この変更をレビューしてください` と依頼します。スキルはlint・テストと、文脈を追った設計レビューを両方行い、実行結果・判断根拠・未検証事項を報告します。**CLIの成功は設計レビューの完了ではありません。** 人間も [SKILL.md](skills/tsurakunai-rails/SKILL.md) と [判断例](skills/tsurakunai-rails/references/review.md) をレビュー手順として使えます。
 
@@ -163,5 +167,7 @@ zizmor --offline .github/workflows
 ```
 
 CIはcopの正常系・違反・例外・対象パス・非自動修正、CLIの失敗時の継続と既存ファイル保護、ビルドしたGemの実インストール・利用まで確認します。GitHub ActionsはSHA固定・read-only権限・認証情報を残さないcheckoutにし、actionlintとzizmorで検証します。
+
+[Railsの実用検証](docs/acceptance.md)では、6つの正常な契約と6つの回帰を実際のリクエスト・SQLite・描画で確認し、配布Gemでも同じ公開CLIを実行します。
 
 [ルール設計と追加基準](docs/design.md) / [リリース手順](docs/releasing.md) / [MIT License](LICENSE)

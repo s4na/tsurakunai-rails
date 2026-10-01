@@ -38,9 +38,16 @@ Bundler.with_unbundled_env do
       gem "rubocop-tsurakunai-rails", "= #{Gem::Specification.load(File.join(root, 'rubocop-tsurakunai-rails.gemspec')).version}"
       gem "erb_lint", "~> 0.9", require: false
       gem "rubocop", "#{ENV.fetch('RUBOCOP_VERSION', '>= 1.72.1')}"
+      gem "actionpack", "= #{Gem.loaded_specs.fetch('actionpack').version}", require: false
+      gem "activerecord", "= #{Gem.loaded_specs.fetch('activerecord').version}", require: false
+      gem "sqlite3", "= #{Gem.loaded_specs.fetch('sqlite3').version}", require: false
     RUBY
     # Assert the installed default accepts Rails conventions before opting in.
     run!(env, "bundle", "lock", "--local", directory: application)
+    # The acceptance runner uses this external bundle: public commands resolve to
+    # the installed artifact, while requests, SQL and rendering use real Rails.
+    acceptance = run!(env, RbConfig.ruby, File.join(root, "script/acceptance.rb"), directory: application)
+    puts acceptance
     defaults = YAML.safe_load(run!(env, "bundle", "exec", "rubocop", "--plugin", "rubocop-tsurakunai-rails", "--show-cops", directory: application), permitted_classes: [Regexp, Symbol])
     %w[ControllerCallbacks DefaultScope ValidationBypass ModelRequestContext].each do |name|
       raise "Unexpected default policy: #{name}" if defaults.fetch("TsurakunaiRails/#{name}").fetch("Enabled")
