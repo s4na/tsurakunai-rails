@@ -40,7 +40,7 @@ RSpec.describe Tsurakunai::Rails::CLI do
   end
 
   it "requires a test command so a lint-only run cannot pass as full validation" do
-    _, stderr, status = cli("check", "--")
+    _, stderr, status = cli("check", "--", env: { "RUBYOPT" => "-W0" })
     expect(status.exitstatus).to eq(2)
     expect(stderr).to include("TEST_COMMAND")
   end

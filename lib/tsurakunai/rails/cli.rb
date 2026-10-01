@@ -21,11 +21,11 @@ module Tsurakunai
         when "version", "--version" then puts VERSION; 0
         when "help", "--help", nil then puts usage; 0
         else
-          warn usage
+          $stderr.puts usage
           2
         end
       rescue OptionParser::ParseError, ArgumentError, SystemCallError => e
-        warn e.message
+        $stderr.puts e.message
         2
       end
 
