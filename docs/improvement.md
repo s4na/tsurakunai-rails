@@ -61,7 +61,7 @@
 | A・B: 基準と書き方 | T01〜T09、CRUD/model/operation、成功値・拒否・保存失敗、明示例外を一本化。README・導入・共通参照も更新 |
 | C: 検査 | ControllerCallbacksを標準ON、ModelCallbacks/ImplicitContext/Concernを追加。禁止・正常・許可・動的登録の境界を検証 |
 | D: 導入 | init-policyで規約とprofileを一緒に生成。既存ファイル・壊れたsymlink・再実行を上書きしない |
-| E: 実行と配布 | Ruby 4.0.5で最終132 examples / 0 failures、RuboCop 33 files / no offenses。旧6契約40 assertion＋新6契約30 assertion、旧6回帰＋新2回帰、禁止4例。buildと別bundleへのGem実インストール・公開CLI・ERB・両クライアントのスキル配置が成功 |
+| E: 実行と配布 | Ruby 4.0.5で最終133 examples / 0 failures、RuboCop 33 files / no offenses。旧6契約40 assertion＋新6契約30 assertion、旧6回帰＋新2回帰、禁止4例。buildと別bundleへのGem実インストール・公開CLI・ERB・両クライアントのスキル配置が成功 |
 | 下限互換性 | 隔離bundleのRuby 3.0.7、RuboCop 1.74.0、Rails 7.1.6で変更関連52 examples / 0 failures。追加cop・CLI・plugin・旧新実用検証を実行 |
 | スキル構造 | portable skill validatorとskill-creatorの3入口validatorが成功。文面の意味はこの構造検査で保証しない |
 | F: 独立判断・レビュー | 新規コンテキストの担当へ4課題を渡し、期待解答を渡さず判断。CRUDを直接更新、明細確定をmodel、外部決済をoperation＋commit後の永続記録処理へ配置。T02/T03/T04/T07の違反を区別し、許可認証とトップレベルviewは維持。差分・新規ファイルの最終必須問題0件 |
@@ -74,6 +74,7 @@
 - 独立レビューで古いレビュー表の「単一actionのpartialはinstance variableのままでよい」が残っていると指摘された。T07へ修正し、当該担当が解消を確認した。入口のスキルだけ更新しても参照先で判断がぶれるため、同梱参照もレビューする。
 - PRレビューで`before_commit`の検出漏れが見つかった。[Railsのcallback仕様](https://api.rubyonrails.org/classes/ActiveRecord/Callbacks.html)を確認し、単体と公開pluginの両経路で修正前の失敗を再現した。登録名の制限対象へ追加し、既定profileで暗黙の決済処理を拒否する回帰テストを通した。
 - 再レビューで、許可した業務定数を名前空間内の短い`Current`で参照すると誤検出する問題が見つかった。字句上のclass/module本体を考慮し、ネスト・絶対名・別名前空間・短縮したmodule宣言・superclass式の境界と公開pluginを検証した。全体の`Current`を許可する必要をなくし、型推論をしない限界も記録した。
+- 追加レビューで、`Invoice.after_commit`等の明示したmodelクラスへの登録が制限をすり抜けると指摘された。定数・名前空間付き定数・class取得も対象にし、単体と公開pluginで失敗を再現して修正した。許可された名前の基盤hookとtransactionインスタンスへの明示的登録は維持し、動的なmodelクラス取得は型推論できないためレビュー対象とした。
 
 ### 今回の価値判定と停止
 

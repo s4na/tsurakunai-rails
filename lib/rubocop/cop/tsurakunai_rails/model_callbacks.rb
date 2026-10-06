@@ -17,7 +17,7 @@ module RuboCop
         MSG = "Call business steps explicitly; keep only team-approved named lifecycle hooks."
 
         def on_send(node)
-          return unless node.receiver.nil? || node.receiver.self_type?
+          return unless model_receiver?(node.receiver)
           return if allowed_callback?(node)
 
           add_offense(node.loc.selector)
@@ -25,6 +25,11 @@ module RuboCop
         alias on_csend on_send
 
         private
+
+        def model_receiver?(receiver)
+          receiver.nil? || receiver.self_type? || receiver.const_type? ||
+            ((receiver.send_type? || receiver.csend_type?) && receiver.method?(:class))
+        end
 
         def allowed_callback?(node)
           return false if node.method?(:set_callback) || node.block_node

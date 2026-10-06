@@ -20,6 +20,7 @@ RSpec.describe RuboCop::Cop::TsurakunaiRails::ModelCallbacks do
     expect_no_offenses(<<~RUBY)
       before_validation :normalize_email, on: :create
       self.before_validation "normalize_email"
+      Contact.before_validation :normalize_email
       transaction.before_commit { record_audit }
       transaction.after_commit { notify }
       validates :email, presence: true
@@ -43,6 +44,21 @@ RSpec.describe RuboCop::Cop::TsurakunaiRails::ModelCallbacks do
       ^^^^^^^^^^^^^^^^^ #{described_class::MSG}
       self.set_callback :save, :after, :collect_payment
            ^^^^^^^^^^^^ #{described_class::MSG}
+    RUBY
+  end
+
+  it "rejects explicit model class receivers including qualified names and self.class" do
+    expect_offense(<<~RUBY)
+      Invoice.after_commit :collect_payment
+              ^^^^^^^^^^^^ #{described_class::MSG}
+      Billing::Invoice.before_save { collect_payment }
+                       ^^^^^^^^^^^ #{described_class::MSG}
+      Invoice&.before_commit :collect_payment
+               ^^^^^^^^^^^^^ #{described_class::MSG}
+      self.class.after_save :collect_payment
+                 ^^^^^^^^^^ #{described_class::MSG}
+      invoice.class.set_callback :save, :after, :collect_payment
+                    ^^^^^^^^^^^^ #{described_class::MSG}
     RUBY
   end
 end
