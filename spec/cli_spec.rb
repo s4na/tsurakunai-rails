@@ -7,8 +7,10 @@ require "rbconfig"
 
 RSpec.describe Tsurakunai::Rails::CLI do
   def cli(*arguments, env: {}, **options)
-    Open3.capture3(env, RbConfig.ruby, "-I", File.expand_path("../lib", __dir__),
-                  File.expand_path("../exe/tsurakunai-rails", __dir__), *arguments, **options)
+    Dir.mktmpdir("tsurakunai-codex-home-") do |codex_home|
+      Open3.capture3({ "CODEX_HOME" => codex_home }.merge(env), RbConfig.ruby, "-I", File.expand_path("../lib", __dir__),
+                    File.expand_path("../exe/tsurakunai-rails", __dir__), *arguments, **options)
+    end
   end
 
   it "creates portable team decisions and a usable profile without overwriting project instructions" do
@@ -111,6 +113,68 @@ RSpec.describe Tsurakunai::Rails::CLI do
       expect(stderr).to include("takes precedence")
       expect(File).not_to exist(File.join(project, "AGENTS.md"))
       expect(File.read(File.join(project, "AGENTS.override.md"))).to eq("active team instructions")
+    end
+  end
+
+  it "does not displace fallback instructions configured in CODEX_HOME" do
+    Dir.mktmpdir do |project|
+      Dir.mktmpdir do |codex_home|
+        File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
+        File.write(File.join(project, "TEAM_GUIDE.md"), "active team guidance")
+        configuration = 'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]'
+        File.write(File.join(codex_home, "config.toml"), configuration)
+        _, stderr, status = cli("install-rules", "--target", "codex", "--project", project,
+                                env: { "CODEX_HOME" => codex_home })
+        expect(status.exitstatus).to eq(2)
+        expect(stderr).to include("fallback", "merge")
+        expect(File).not_to exist(File.join(project, "AGENTS.md"))
+        expect(File.read(File.join(project, "TEAM_GUIDE.md"))).to eq("active team guidance")
+        expect(File.read(File.join(codex_home, "config.toml"))).to eq(configuration)
+      end
+    end
+  end
+
+  %w[project ancestor profile system].each do |layer|
+    it "preserves custom instruction discovery from a #{layer} config layer" do
+      Dir.mktmpdir do |workspace|
+        project = File.join(workspace, "app")
+        codex_home = File.join(workspace, "codex-home")
+        config = case layer
+                 when "project" then File.join(project, ".codex", "config.toml")
+                 when "ancestor" then File.join(workspace, ".codex", "config.toml")
+                 when "system" then File.join(workspace, "system", "OpenAI", "Codex", "config.toml")
+                 else File.join(codex_home, "work.config.toml")
+                 end
+        FileUtils.mkdir_p([project, File.dirname(config)])
+        File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
+        File.write(File.join(project, ".agents.md"), "custom team rules")
+        File.write(config, %('project_doc_fallback_filenames' = [\n  ".agents.md"\n]\n))
+        _, stderr, status = cli("install-rules", "--target", "codex", "--project", project,
+                                env: { "CODEX_HOME" => codex_home, "ProgramData" => File.join(workspace, "system") })
+        expect(status.exitstatus).to eq(2)
+        expect(stderr).to include("fallback", "merge")
+        expect(File).not_to exist(File.join(project, "AGENTS.md"))
+        expect(File.read(File.join(project, ".agents.md"))).to eq("custom team rules")
+      end
+    end
+  end
+
+  it "allows ordinary Codex settings without changing them or blocking Claude rules" do
+    Dir.mktmpdir do |project|
+      Dir.mktmpdir do |codex_home|
+        File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
+        config = File.join(codex_home, "config.toml")
+        File.write(config, 'model = "team-model"')
+        _, stderr, status = cli("install-rules", "--target", "codex", "--project", project,
+                                env: { "CODEX_HOME" => codex_home })
+        expect(status.success?).to be(true), stderr
+        expect(File.read(config)).to eq('model = "team-model"')
+        File.write(config, 'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]')
+        _, stderr, status = cli("install-rules", "--target", "claude", "--project", project,
+                                env: { "CODEX_HOME" => codex_home })
+        expect(status.success?).to be(true), stderr
+        expect(File).to exist(File.join(project, ".claude", "rules", "tsurakunai-rails.md"))
+      end
     end
   end
 

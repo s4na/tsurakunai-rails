@@ -52,7 +52,7 @@ inherit_from:
 
 配置先は[Codexのプロジェクト指示](https://learn.chatgpt.com/docs/agent-configuration/agents-md#layer-project-instructions)と[Claude Codeのルール読み込み](https://code.claude.com/docs/en/memory)に従います。Claude側はpaths指定のないMarkdownなので、特定ファイルを開いたときだけのルールにはしません。AIへの指示は実装・レビューの基準であり、意味的な設計を自動的に強制するlintではありません。
 
-既存の配置先は上書きしません。Codexで`AGENTS.override.md`がある場合も、無視される`AGENTS.md`を作らず終了します。既存の有効な指示へ共通ルールを手動で統合してください。Claudeの指示ディレクトリがsymlinkなら共有先へ書かず終了するため、同様に手動で統合します。既存`CLAUDE.md`やグローバル設定、チーム規約は変更しません。
+既存の配置先は上書きしません。Codexで`AGENTS.override.md`がある場合も、無視される`AGENTS.md`を作らず終了します。[独自名のfallback設定](https://learn.chatgpt.com/docs/agent-configuration/agents-md#customize-fallback-filenames)がある場合も、新しいAGENTS.mdが既存指示を隠すため終了します。CODEX_HOME（未指定なら~/.codex）のconfig.toml・*.config.toml、導入先と祖先の.codex/config.toml、/etc/codex/config.toml（Windowsのsystem設定はProgramData/OpenAI/Codex/config.toml）にproject_doc_fallback_filenamesの記載があれば保守的に止めます。TOMLの値やprofileの優先順位は解釈しないため、空リスト・コメント・未選択profileの記載でも手動統合を案内します。起動引数や別環境で指定した設定までは読み取れないので、独自設定がある場合は既存の有効な指示へ共通ルールを手動で統合してください。Claudeの指示ディレクトリがsymlinkなら共有先へ書かず終了するため、同様に手動で統合します。既存`CLAUDE.md`やグローバル設定、チーム規約は変更しません。
 
 配置後は新しいエージェントセッションを開始し、読み込んだ指示のソースを確認します。Codexでは読み込んだ指示の列挙を依頼し、Claude Codeでは`/context`で確認できます。下位の指示やクライアント設定の除外も確認してください。配布物からのファイル配置は検証していますが、各クライアントの実セッションでの自動読み込みはこのリポジトリのCIでは検証していません。
 

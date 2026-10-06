@@ -106,6 +106,9 @@ module Tsurakunai
           override = File.join(project, "AGENTS.override.md")
           raise ArgumentError, "AGENTS.override.md takes precedence; merge config/agent_rules.md into your active instructions" if File.exist?(override) || File.symlink?(override)
 
+          if custom_codex_instruction_config?(project)
+            raise ArgumentError, "Custom Codex fallback configuration detected; merge config/agent_rules.md into your active instructions"
+          end
           destination = File.join(project, "AGENTS.md")
         else
           %w[.claude .claude/rules].each do |directory|
@@ -123,6 +126,25 @@ module Tsurakunai
         puts "Installed #{destination}; required contracts and prohibited forms use RAILS_TEAM_POLICY.md."
         puts "Start a new agent session and verify the project instruction source is loaded."
         0
+      end
+
+      def custom_codex_instruction_config?(project)
+        codex_home = ENV.fetch("CODEX_HOME", File.join(Dir.home, ".codex"))
+        paths = [File.join(codex_home, "config.toml"), "/etc/codex/config.toml"]
+        paths << File.join(ENV.fetch("ProgramData"), "OpenAI", "Codex", "config.toml") if ENV.key?("ProgramData")
+        paths.concat(Dir.glob(File.join(codex_home, "*.config.toml")))
+        directory = project
+        loop do
+          paths << File.join(directory, ".codex", "config.toml")
+          parent = File.dirname(directory)
+          break if parent == directory
+
+          directory = parent
+        end
+        # Do not resolve TOML profiles/precedence or risk hiding an active fallback.
+        paths.uniq.any? do |path|
+          File.file?(path) && File.read(path).include?("project_doc_fallback_filenames")
+        end
       end
 
       def install_view_lint(arguments)

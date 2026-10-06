@@ -26,6 +26,7 @@ Bundler.with_unbundled_env do
     artifact = File.join(workspace, "package.gem")
     env = {
       "GEM_HOME" => gem_home,
+      "CODEX_HOME" => File.join(workspace, "codex-home"),
       "GEM_PATH" => ([gem_home] + Gem.path).join(File::PATH_SEPARATOR),
       "BUNDLE_IGNORE_CONFIG" => "1",
       "BUNDLE_FROZEN" => "false",
