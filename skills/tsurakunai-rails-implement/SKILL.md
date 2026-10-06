@@ -1,29 +1,28 @@
 ---
 name: tsurakunai-rails-implement
-description: Build Rails changes from a user operation through domain APIs, explicit boundaries, and observable tests.
+description: Implement Rails changes with a consistent team convention for explicit flow, domain operations, inputs and failures.
 ---
 
 # Railsの変更を実装する
 
-[共通の設計判断](../tsurakunai-rails/references/daily-design.md)を使い、動作するコードの置き場所を決める。クラスの種類を揃えることより、一つの利用者操作を少ない場所で理解・変更できる形を作る。導入先の規約と今回の依頼範囲を優先する。
+[チーム規約](../tsurakunai-rails/references/team-policy.md)を読み、T01〜T09を標準にする。導入先の `RAILS_TEAM_POLICY.md` と明示規約・lint設定を先に確認し、既存の合意を優先する。同じ仕事を同じ形に揃え、個人の好みや近隣コードの存在だけで許可を増やさない。
 
-## 作る順序
+## 実装する
 
-1. **一つの操作を追う。** route、controller/job、model、近隣のテストを読み、利用者・入力・成功結果・失敗結果を決める。既存の公開APIを使えるか確認し、未コミット変更を保護する。
-2. **入口を決める。** controllerは認証、対象の認可、入力の取り出し、HTTP応答を担当する。jobにも必要なactor・対象・権限の前提を渡す。単純なCRUDならcontrollerからmodelを直接呼ぶ。
-3. **状態を守る場所を決める。** レコードや自然な集約の不変条件・状態遷移はmodelの業務名メソッドへ置く。関連更新があるだけでserviceへ移さない。凝集したdomain traitは既存のconcernへまとめてもよい。
-4. **独立した仕事だけ分ける。** 外部I/O、独立計算、複数集約を調整する手順は、必要なら名前付きPOROへ分ける。model配下のPOROへの委譲も選べる。値だけで済む計算は明示入力と戻り値にし、不要なDB・時刻・共有状態に依存させない。クラスや関数の形は仕事に合わせる。
-5. **失敗の境界を先に作る。** 一緒に成功すべきDB変更をtransactionへまとめ、保存失敗を呼び出し元へ伝える。外部副作用はrollbackできないので、commit、送信失敗、再実行の扱いを決める。単純なlifecycle callbackと複雑な業務フローを区別する。
-6. **取得と表示の契約を作る。** 認可済みscope、並び順、ページング、必要な関連取得を先に決める。複雑になった検索だけFinder/query objectへ分ける。partialは明示入力で使い、振る舞い・再利用・描画テストの利益があるUIは既存component基盤やViewComponentへまとめる。
-7. **結果で確かめる。** 成功、保存失敗、認可拒否を公開入口とDB・描画結果で確認する。外部処理や再試行がある変更では二重実行も確認する。既存テストが保証する部分を重複させない。性能変更は件数とquery数等で比較する。
-8. **検査し、レビューへ渡す。** 導入済みのlintと実際のテストを実行する。Gem導入済みなら`bundle exec tsurakunai-rails check -- <テストコマンド>`、ERB検査を導入済みなら`check --views -- <テストコマンド>`を使う。[レビュースキル](../tsurakunai-rails-review/SKILL.md)の観点で最終差分を確認し、実行結果・未確認事項を報告する。独立レビューを行ったと偽らない。
+1. route/action/jobから対象の操作と既存の公開APIを追う。利用者、許可入力、認可済みscope、成功・拒否・保存失敗後の結果を決める。未コミット変更を保護する。
+2. **属性編集なら直接CRUD、集約の状態遷移ならmodelの業務名メソッド、別集約・外部I/Oの調整ならoperation**へ置く。新規operationは普通のclassの `call` を使う。既存の置き場所・API契約が明示されていれば揃える。一回のsaveを転送する層は作らない。
+3. T01〜T04に従い、actionの対象取得・操作を見せ、業務callback/Concernを追加しない。actor・tenant・必要な時刻は引数へ。認証等の承認済みhookは維持し、変更時には全actionの停止・拒否を確認する。許可名へ業務処理を紛れ込ませない。
+4. T08〜T09に従い、不変条件・保存結果・transactionと応答を作る。CRUDは更新結果で分岐、model/operationはbang APIと業務例外の既存契約へ揃える。外部処理があれば外側transaction・commit・送信失敗・再実行を確認し、callbackをsave直後へ移すだけで済ませない。
+5. T06〜T07に従い、取得scope・並び・ページング・関連を描画前に決め、全partialへlocalsを渡す。既存UI基盤を使い、入力を渡すだけのcomponentやformを増やさない。保存失敗の再描画でも入力とerrorsを保つ。
+6. 変更に関係する公開結果を実行で確かめる。正常・拒否・保存失敗後のDB/応答/描画、必要なrequestなしのmodel/job実行を確認する。既存の保証を重複させず、再試行やquery数は変更に関係するとき検証する。
+7. 導入済みGemでは `bundle exec tsurakunai-rails check -- <実際のテスト入口>`、ERBセット導入済みなら `check --views -- ...` を使う。lint失敗時は規約IDと置き換え先で修正し、通すためのOFF・例外追加はしない。[レビュースキル](../tsurakunai-rails-review/SKILL.md)で最終差分を確認し、結果と重要な未検証事項を報告する。
 
-## 判断に迷ったら
+例外が今回必要なら、対象・理由・代替保証を具体化してチームの決定にする。既存の明示許可は再承認しない。変更していない領域の一括整理、未承認の公開・デプロイは行わない。セルフレビューと独立レビューを区別する。
 
-- [業務の入口と責務](../tsurakunai-rails/references/responsibilities.md): controller、model、PORO、concernの選択
-- [状態とDB](../tsurakunai-rails/references/data.md): 不変条件、保存結果、競合
-- [権限と外部I/O](../tsurakunai-rails/references/boundaries.md): actor、tenant、commitと送信
-- [取得と描画](../tsurakunai-rails/references/views.md): query、partial、component、入力
-- [テストと運用](../tsurakunai-rails/references/testing.md): 結果の保証、件数、時刻、再実行
+## 関係する詳細だけ読む
 
-命名は対象と仕事が分かる業務語を選ぶ。`Service`等の接尾辞や行数だけで良し悪しを決めない。変更していないコードの一括整理、未承認の依存追加・公開・デプロイは行わない。
+- [責務と公開API](../tsurakunai-rails/references/responsibilities.md): model/operation/query/formの境界
+- [状態とDB](../tsurakunai-rails/references/data.md): 保存、競合、migration
+- [権限と副作用](../tsurakunai-rails/references/boundaries.md): 認可、外部I/O、commit
+- [取得と描画](../tsurakunai-rails/references/views.md): render入口・locals・失敗時表示
+- [テストと運用](../tsurakunai-rails/references/testing.md): 公開結果、件数、時刻、再実行

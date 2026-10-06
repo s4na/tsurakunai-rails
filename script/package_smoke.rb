@@ -48,11 +48,13 @@ Bundler.with_unbundled_env do
     # the installed artifact, while requests, SQL and rendering use real Rails.
     acceptance = run!(env, RbConfig.ruby, File.join(root, "script/acceptance.rb"), directory: application)
     puts acceptance
+    puts run!(env, RbConfig.ruby, File.join(root, "script/team_acceptance.rb"), directory: application)
     defaults = YAML.safe_load(run!(env, "bundle", "exec", "rubocop", "--plugin", "rubocop-tsurakunai-rails", "--show-cops", directory: application), permitted_classes: [Regexp, Symbol])
-    %w[DefaultScope ValidationBypass ModelRequestContext].each do |name|
+    %w[ControllerCallbacks DefaultScope ValidationBypass ModelRequestContext ModelCallbacks ImplicitContext Concern].each do |name|
       raise "Missing default policy: #{name}" unless defaults.fetch("TsurakunaiRails/#{name}").fetch("Enabled")
     end
-    raise "Callbacks must be opt-in" if defaults.fetch("TsurakunaiRails/ControllerCallbacks").fetch("Enabled")
+    run!(env, "bundle", "exec", "tsurakunai-rails", "init-policy", directory: application)
+    raise "Missing packaged team policy" unless File.file?(File.join(application, "RAILS_TEAM_POLICY.md"))
     File.write(File.join(application, ".rubocop.yml"), <<~YAML)
       plugins:
         - rubocop-tsurakunai-rails
@@ -80,7 +82,7 @@ Bundler.with_unbundled_env do
       folder = target == "codex" ? ".agents" : ".claude"
       installed = File.join(application, folder, "skills", "tsurakunai-rails")
       puts run!(env, RbConfig.ruby, File.join(root, "script/validate_skill.rb"), File.join(application, folder, "skills"), directory: application)
-      %w[review.md responsibilities.md views.md daily-design.md].each do |reference|
+      %w[review.md responsibilities.md views.md daily-design.md team-policy.md].each do |reference|
         raise "Missing installed skill reference: #{reference}" unless File.file?(File.join(installed, "references", reference))
       end
     end

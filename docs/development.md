@@ -6,6 +6,7 @@
 bundle install
 bundle exec rake spec
 bundle exec ruby script/validate_skill.rb
+bundle exec ruby script/team_acceptance.rb
 bundle exec rubocop
 bundle exec ruby script/package_smoke.rb
 bundle exec rake build
@@ -18,3 +19,5 @@ CIはcopの正常系・違反・例外・対象パス・非自動修正、CLIの
 [Railsの実用検証](acceptance.md)では、6つの正常な契約と6つの回帰を実際のリクエスト・SQLite・描画で確認し、配布Gemでも同じ公開CLIを実行します。
 
 [ルール設計と追加基準](design.md) / [リリース手順](releasing.md) / [MIT License](../LICENSE)
+
+新しい標準規約の公開経路は[team_app](../spec/fixtures/team_app)とscript/team_acceptance.rbで、生成profile・実DB・禁止構文・lintを通る2つの回帰を検証します。[棚卸しと改善フロー](improvement.md)へ判断品質と実行結果を残します。

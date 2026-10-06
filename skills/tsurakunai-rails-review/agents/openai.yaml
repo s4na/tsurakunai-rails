@@ -1,4 +1,4 @@
 interface:
   display_name: "つらくないRails レビュー"
-  short_description: "境界・状態・副作用が崩れる経路を根拠付きで確認する"
-  default_prompt: "$tsurakunai-rails-review を使い、このRails変更を編集せずレビューしてください。"
+  short_description: "同じチーム規約でRailsの規約違反と不具合を分けて確認する"
+  default_prompt: "$tsurakunai-rails-review を使い、このRails変更の規約違反と不具合を編集せず確認してください。"

@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.version = Tsurakunai::Rails::VERSION
   spec.authors = ["s4na"]
   spec.summary = "Focused Rails guardrails for humans and coding agents"
-  spec.description = "RuboCop checks for hidden control flow and persistence, plus an installable Rails review skill."
+  spec.description = "Team conventions for explicit Rails flow, with RuboCop checks and portable implementation/review skills."
   spec.homepage = "https://github.com/s4na/tsurakunai-rails"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.0"

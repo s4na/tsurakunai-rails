@@ -26,12 +26,22 @@ plugins:
 
 ```sh
 bundle install
+bundle exec tsurakunai-rails init-policy
 # プロジェクト内へ配置する。必要なクライアントだけ実行する。
 bundle exec tsurakunai-rails install-skill --target codex
 bundle exec tsurakunai-rails install-skill --target claude
 ```
 
 Codexでは`.agents/skills/`、Claude Codeでは`.claude/skills/`配下に、`tsurakunai-rails`・`tsurakunai-rails-implement`・`tsurakunai-rails-review`の3フォルダを配置します。共通資料は`tsurakunai-rails/references/`に一度だけ置き、他の2つが参照します。`--project PATH`で別のプロジェクトを指定できます。配置したファイルをコミットすればチームで共有できます。いずれかの既存フォルダがあれば、全体の配置を始めず終了します。既存ファイルは上書きしません。更新時はGem同梱の`skills/`の3フォルダと比較し、ローカル変更を保全してから入れ替えてください。更新・アンインストールは3フォルダを一組として扱います。旧版の1フォルダだけを残すと、新しい相互参照は使えません。アンインストール時はGem・plugin設定も取り除きます。
+
+`init-policy`はRAILS_TEAM_POLICY.mdと.rubocop-tsurakunai.ymlを生成します。どちらかが既存なら配置前に終了し、上書きしません。既存.rubocop.ymlへ次を追加します。既存inherit_fromがある場合はリストへ加えます。
+
+```yaml
+inherit_from:
+  - .rubocop-tsurakunai.yml
+```
+
+既存のAGENTS.md/CLAUDE.mdへは「Rails変更はRAILS_TEAM_POLICY.mdとtsurakunai-railsスキルを使用」と追記すると発見しやすくなります。installerはこれらの指示ファイルを変更しません。必須の認証hook名と理由・代替保証を生成ファイルへ登録してから検査してください。
 
 ## 使う
 
@@ -56,9 +66,9 @@ Ruby lint・View lint・Testsごとの結果を表示します。`View lint: SKI
 
 ## 標準方針を調整する
 
-pluginを追加すると、設計方針7ルールと事故防止8ルール、RSpec7ルールが有効になります。以前のバージョンから更新すると新しい指摘が出るため、[更新時の確認](adoption.md)を先に読んでください。既存の`config/policies.yml`はControllerCallbacksの全面禁止も有効にする厳格presetとして残っています。通常の導入では不要です。
+pluginを追加すると、設計方針11ルールと事故防止8ルール、RSpec7ルールが有効になります。以前のバージョンから更新すると新しい指摘が出るため、[更新時の確認](adoption.md)を先に読んでください。ControllerCallbacksとModelCallbacks、ImplicitContext、Concernも標準ONです。旧config/policies.ymlは互換用です。
 
-合わないlintは`.rubocop.yml`で個別にOFFにできます。
+明示的なチームの決定としてlintをoverrideできます。理由と代替保証をRAILS_TEAM_POLICY.mdへ揃え、移行中の機能は対象を狭く限定します。既存の明示OFFは再有効化しません。
 
 ```yaml
 TsurakunaiRails/ControllerCallbacks:
@@ -82,7 +92,7 @@ ERBを使うアプリでは、[ERB用の標準設定](view-inputs.md)と`erb_lin
 
 ## 例外と段階導入
 
-callback全面禁止は標準OFFです。厳格presetや個別設定でONにする場合も、認証基盤などで必要なhookは許可名で残せます。
+callback制限は標準ONです。認証基盤などで必要なhookは、全actionでの停止・拒否を確かめ、事前に許可名で残します。
 
 ```yaml
 TsurakunaiRails/ControllerCallbacks:

@@ -1,27 +1,29 @@
 ---
 name: tsurakunai-rails-review
-description: Review Rails changes for broken boundaries, hidden business flows, and observable failures without editing code.
+description: Review Rails changes against explicit team conventions and investigate concrete failures without editing code.
 ---
 
 # Railsの変更をレビューする
 
-[共通の設計判断](../tsurakunai-rails/references/daily-design.md)を基準に、期待する状態から外れる経路を探す。読み取り専用で実施し、コード編集・投稿・pushは別途依頼がない限り行わない。対象のbase/headと未コミット差分、導入先の規約、既存の検証結果を先に確認する。
+[チーム規約](../tsurakunai-rails/references/team-policy.md)を読み、T01〜T09を基準にする。対象base/head・未コミット差分、導入先の `RAILS_TEAM_POLICY.md`・明示規約・実効lint設定・既存結果を確認する。読み取り専用で進め、編集・投稿・pushは別途依頼がない限り行わない。
 
-## 問題状態から追う
+## 二つの観点で確認する
 
-- **HTTP処理に業務判断が埋まる**: controller/concern内の料金計算や承認条件を追う。単純CRUDと応答分岐は許容し、privateへ移しただけの業務ロジックを見落とさない。[責務](../tsurakunai-rails/references/responsibilities.md)
-- **入口によって守る条件が変わる**: controllerだけのvalidation・認可、job/consoleから迂回できる状態遷移、別tenantの取得を確認する。modelメソッド・concern・POROの存在自体は問題にしない。[状態とDB](../tsurakunai-rails/references/data.md)、[権限](../tsurakunai-rails/references/boundaries.md)
-- **一部だけ保存される、失敗が成功になる**: 保存の戻り値、例外、transaction範囲、呼び出し元の応答を追う。課金や通知がrollbackで戻ると仮定していないか確認する。[保存結果](../tsurakunai-rails/references/data.md)、[外部I/O](../tsurakunai-rails/references/boundaries.md)
-- **副作用と実行順序が隠れる**: validation・描画・callbackから別の業務や外部通信が起動する経路、再実行時の重複を追う。単純な正規化・lifecycle付随処理・認証hookを全面禁止しない。[外部I/O](../tsurakunai-rails/references/boundaries.md)
-- **描画するほどqueryや状態変更が増える**: helper/componentの内部、collectionの関連参照、scope・ページング・入力値を確認する。partialかcomponentかだけで性能を判定しない。[取得と描画](../tsurakunai-rails/references/views.md)
-- **分離しても理解する場所が増えるだけ**: 一度のsaveを転送するだけのクラス、仕事の不明なManager/Utils、HTTP objectをそのまま渡すserviceを確認する。既存の公開APIやframework規約に理由があれば維持する。[責務](../tsurakunai-rails/references/responsibilities.md)
-- **テストが問題を隠す**: 委譲だけで終わる認可変更、テスト対象の重要処理をstubした結果、失敗後のDB状態や描画を見ないassertを確認する。正当な境界stubや別テストでの保証は尊重する。[テスト](../tsurakunai-rails/references/testing.md)
+**規約に揃っているか。** 変更した処理のT01〜T09を選ぶ。動作していても、未許可のcallback・Current・Concern・partialの暗黙入力、新しい流儀のoperationや失敗契約は規約違反として報告する。既存の明示許可とframework内部は尊重し、単にコードが以前からあることを許可と混同しない。許可hookの本体が業務手順を増やしていないか、文書とlintが一致するかを確認する。
 
-## 確かめて報告する
+**結果が壊れる経路があるか。** 全入口の認可とtenant、保存失敗と部分commit、外側transactionと外部副作用、再実行、描画時の取得と更新、テストのstubで消された保証を追う。model/operationが存在するだけで状態・認可が守られるとしない。
 
-1. 関係する項目だけ選び、入力・呼び出し元・既存の防御・テストを追って候補を反証する。差分だけで断定しない。
-2. 導入済みのlintと該当テストを実行、または同じheadでの結果を確認する。未実行は明記する。RuboCopの構文検出と、この文脈レビューを区別する。
-3. 不具合はファイル/行、発生条件、期待と実際の差、影響、最小の修正を示す。設計上の指摘は方針と具体的な保守負担を示し、動作不良と混同しない。未計測の性能・脆弱性を断定しない。
-4. 指摘がなければ確認した範囲と重要な未検証事項を報告する。指摘数を埋めず、全項目の定型報告書も作らない。改善の参考例は[具体例](../tsurakunai-rails/references/review.md)を使う。
+- [責務](../tsurakunai-rails/references/responsibilities.md): T01/T02/T04/T05/T08、状態操作の入口と失敗契約
+- [状態とDB](../tsurakunai-rails/references/data.md): T09、直接更新・競合・migration
+- [権限と副作用](../tsurakunai-rails/references/boundaries.md): T03/T09、別入口・commit・送信
+- [取得と描画](../tsurakunai-rails/references/views.md): T06/T07、全render入口・件数・状態不変
+- [テスト](../tsurakunai-rails/references/testing.md): 正常・拒否・失敗の公開結果
 
-lintで機械判定できるのは宣言・呼び出し等の構文まで。PORO、concern、callback、partial、componentの有無を一律の合否条件にしない。個別OFFや既存規約は尊重するが、認可漏れ・データ破損の具体的な経路は確認する。
+## 根拠を報告する
+
+1. 関係する規約と呼び出し元・許可・既存の防御を確認して候補を反証する。未変更領域の全改修を要求しない。
+2. 導入済みlintと該当テストを実行、または同じheadの結果を確認する。未実行を明記し、構文検査と意味の判断を区別する。
+3. 規約違反は **ID・ファイル/行・未許可の形・標準の置き換え先**、不具合は **発生条件・期待と実際・影響・最小修正**を示す。好みの改善は必須修正へ格上げしない。未計測の性能や脆弱性を断定しない。
+4. 問題がなければ確認範囲と重要な未検証事項を報告する。指摘数や全項目の定型報告書を埋めない。[具体例](../tsurakunai-rails/references/review.md)も利用できる。
+
+規約はRailsの一般的な禁止事項ではない。不具合がなくても、このチームが選んだ制限は適用する。既存の明示OFFだけではAIが新しい例外を増やす理由にならない。認可漏れ・データ破損は規約の許可があっても確認する。

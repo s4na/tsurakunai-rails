@@ -47,7 +47,7 @@ current_account.invoices.order(sort)
 
 **確認すること**: 当該Rails version、queue adapter、enqueueのcommit待ちの設定を確認し、動作を推測しない。外部副作用はDB rollbackで戻らない。業務の保証に応じてcommit後の処理、永続job、outbox、外部APIの冪等キーを選ぶ。IDなどをjobへ渡し、実行時の削除・状態変更・tenant scopeを扱う。retry範囲を決め、一時エラーと永続エラーを分ける。callbackの重複登録で片方が消える問題は標準copでも検出する。
 
-**例外**: 重要性が低く再生成できる通知へ決済と同じ配信保証を要求しない。`after_commit`は正当なlifecycle hookになり得るが、それだけで配信保証や冪等性が成立したとしない。
+**例外**: 重要性が低く再生成できる通知へ決済と同じ配信保証を要求しない。T02の明示許可がある`after_commit`は維持できるが、それだけで配信保証や冪等性が成立したとしない。新規業務では明示的な操作とcommitの契約を作る。
 
 **検証**: rollback、enqueue/送信失敗、同一jobの再実行、対象削除、外部APIが成功した後でのtimeoutを確認する。同じ課金や業務更新が二度成立しないことを境界の値とDB状態で確認する。
 

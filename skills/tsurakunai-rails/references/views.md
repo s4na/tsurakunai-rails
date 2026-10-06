@@ -12,7 +12,7 @@
 
 **起きやすい問題**: `_invoice.html.erb` が `@invoice` と `@can_edit` を暗黙に読み、一覧・詳細・Turbo更新で別の値を表示する。controllerの成功経路だけが変数を用意し、validation失敗後の `render :new` では選択肢が消える。`defined?` / nil判定 / `local_assigns` による救済が、必須入力の渡し忘れを隠す。
 
-**確認すること**: トップレベルのviewはactionとの契約としてinstance variableを使ってよい。異なる呼び出し元で対象や表示条件が食い違うなら、locals等の明示的な入力を候補にする。単一action専用のpartialが用意済みのinstance variableを読むだけなら欠陥としない。入力を渡すためだけに大量のpresenterやcomponentを作る必要はない。既存のcomponentを使うならその入力契約を同様に確認する。
+**確認すること**: トップレベルのviewはactionとの契約としてinstance variableを使ってよい。異なる呼び出し元で対象や表示条件が食い違うなら、locals等の明示的な入力を候補にする。T07に従い、単一action専用のpartialでもlocalsで入力を渡す。動作不良とは区別して規約違反を示す。入力を渡すためだけに大量のpresenterやcomponentを作る必要はない。既存のcomponentを使うならその入力契約を同様に確認する。
 
 ```erb
 <%# 問題候補: partialが特定controllerの暗黙の状態へ依存する %>
@@ -39,7 +39,7 @@
 
 ここでは `invoice` が必須、`can_edit` は省略時に非表示という意図を持つ任意入力です。必要な権限判定を忘れたのに `false` で隠れる設計なら、`can_edit` も必須にする。strict localsは導入先のRailsとtemplate engineの対応を確認して選び、非対応環境へ必須導入しない。collection renderでは `as:` / 規約上のlocal名も含めて契約を揃える。Railsが用意するcounter・iteration local等を未知の依存と決めつけない。
 
-**actionの全経路**: new/editだけでなく、create/updateのvalidation失敗、別format、Turbo Stream、mailer、layoutからの呼び出しも確認する。失敗後のformはerrorsと入力した値を持つ対象を使い、別のnew/findで置き換えて消さない。選択肢などは失敗時にも同じ認可範囲で用意する。準備処理は既存のcallbackでも局所的なメソッド呼び出しでもよい。必要な経路を覆い、入力とerrorsを保つことを確認し、方式だけを理由に変更しない。
+**actionの全経路**: new/editだけでなく、create/updateのvalidation失敗、別format、Turbo Stream、mailer、layoutからの呼び出しも確認する。失敗後のformはerrorsと入力した値を持つ対象を使い、別のnew/findで置き換えて消さない。選択肢などは失敗時にも同じ認可範囲で用意する。T01に従い準備はactionの明示呼び出しへ揃え、承認済みの移行例外があれば維持する。必要な経路を覆い、入力とerrorsを保つことを確認する。
 
 **optionalとnil**: 値がなくてもよい仕様ならfallbackは正当。必須データの欠落を `@invoice&.number` や空文字で隠して完了扱いにしない。optionalな装飾と、存在しなければ操作できない業務データを分ける。
 
@@ -63,7 +63,7 @@
 
 **出力**: 入力値を `raw` / `html_safe` へ流す、文脈の異なるHTML/JavaScript/URLへそのまま埋め込む問題は[入力値とSQL・HTML](boundaries.md#s02-入力sql出力)を確認する。業務上の表示条件とescapingは別に検証する。
 
-**例外**: 読み取り専用の既存helper等は呼び出すだけで欠陥としない。取得範囲・件数・実行回数に問題がある、または描画が状態変更を起こす具体的な証拠を示す。表示の副作用を「GETだから安全」「cacheで回数が減る」で正当化しない。
+**例外**: 読み取り専用の既存helperもT06の取得境界に従う。表示用の変換は許可し、対象を選ぶqueryは描画前へ置く。取得範囲・件数・実行回数に問題がある、または描画が状態変更を起こす具体的な証拠を示す。表示の副作用を「GETだから安全」「cacheで回数が減る」で正当化しない。
 
 **検証**: 関連を含む複数件で表示とqueryの増え方を確認する。再描画時にもDB状態や入力objectが意図せず変わらず、外部副作用が起きないことを確認する。cache hitだけでなくmissの経路を必要に応じて確認する。
 

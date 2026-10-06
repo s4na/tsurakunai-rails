@@ -1,0 +1,85 @@
+# 棚卸しと改善フロー
+
+[趣旨と価値の基準](purpose.md)を固定し、現行→あるべき姿→差分→実装→実行→自己レビュー→独立レビュー→価値の再評価を回す。ルール数や好みで標準を入れ替えず、観測した問題から更新する。
+
+## 変更前の棚卸し（d2f3139）
+
+| 現行のルール／スキル | 実際にすること | 中大規模のチームで残る問題 |
+| --- | --- | --- |
+| ModelRequestContext | modelの特定のHTTP名の呼び出しを拒否 | Current等の暗黙入力は文脈判断のまま |
+| DefaultScope | 隠れた検索・初期値を拒否 | 取得境界・配置の統一は別途必要 |
+| ValidationBypass | model内の明示的validation省略を拒否 | bulk/別層/直接更新の契約はレビューが必要 |
+| ControllerCallbacks（標準OFF） | 任意でaction hookを全面制限 | ロード・更新・認証の許可が担当者の判断に戻る |
+| Rails/EnumHash、SaveBang、HasManyOrHasOneDependent、UniqueValidationWithoutIndex | DB値・保存結果・削除方針・unique indexを確認 | 実装の置き場所や失敗APIは揃わない |
+| Rails/ActiveRecordOverride、DuplicateAssociation、AfterCommitOverride、EnumUniqueness | 上書き・重複・callback消失・enum値衝突を検出 | 事故防止として維持。業務フローの規約にはならない |
+| Rails/AddColumnIndex、DangerousColumnNames、NotNullColumn、UnusedRenderContent | index誤指定・列名・既存行の列追加・本文を返せないstatusを検出 | 事故防止として維持。実データと移行順序は別途確認 |
+| RSpec/AnyInstance、MessageChain、SubjectStub、VerifiedDoubles | 対象を消すstub・存在しないAPI等を検出 | 最終状態・認可・失敗を検証することはスキルで補う |
+| RSpec/UnspecifiedException、OverwritingSetup、VoidExpect | 無指定例外・setup上書き・matcher欠落を検出 | テストの形式だけで動作保証はできない |
+| ERB: PartialInputs＋ParserErrors（StrictLocalsは任意） | partialのinstance variable等を検出 | 文書は単一actionを許可、lintは拒否。基準が食い違う |
+| implement | CRUD/model/PORO/Concern/callbackを文脈で選択 | 同じ操作の流儀・配置・失敗契約が複数ある |
+| review | 具体的な不具合と保守負担を追う | 動く規約違反と好みを区別する基準がない |
+| 互換router＋共通references | 実装/レビューへ案内し一次資料を共有 | 趣旨より37signals等の許容範囲が判断の中心になる |
+| CLIのcheck/install-skill/install-view-lint | lint＋テスト、配置、上書き保護 | チームが採用する規約・例外を残す入口がない |
+
+## あるべき姿と差分を埋める順序
+
+| 改善 | あるべきルール／スキル | 埋める差分 | 検証する失敗 |
+| --- | --- | --- | --- |
+| A: 基準を固定 | T01〜T09、一つの趣旨、明示例外 | purpose、team-policy、実装/レビュー/referenceの判断統一 | 同じcallbackやpartialを担当者ごとに許す |
+| B: 書き方を収束 | CRUD/model/operationの分岐、配置と失敗API | 既存規約がない場合の標準を固定。全CRUDのService化は避ける | 層が増え、同じ仕事に別のclass/APIが増える |
+| C: 制限を検査へ | ControllerCallbacks標準ON、ModelCallbacks、ImplicitContext、Concern | 構文の禁止と許可名・範囲をpublic pluginへ | 動く業務callback/Current/Concernが無条件で通る |
+| D: 導入判断を保存 | init-policy＋RAILS_TEAM_POLICY.md＋lint設定 | 既存ファイル保護、portableな規約、認証等の事前許可 | 認証を消す、ローカル例外が消える、文書と設定がずれる |
+| E: 動作と配布で確認 | 正常例・禁止例・既存例外・公開結果 | plugin/CLI/実Rails/配布Gemを実行する | lintだけ成功、ソースだけ動作、callback移行で部分commit |
+| F: 同じ基準で独立評価 | 変更のレビュー＋現実的なスキル利用 | 正解を渡さない判断課題と結果・残件を保存 | 新しい文面でも流儀が増える、根拠なしに完成を宣言する |
+
+## 反復の手順
+
+1. 現行の実効設定・スキル・代表例を読む。依頼の趣旨と違う項目をA〜Fへ記録する。
+2. 一つの問題について、入力・期待する判断/結果・禁止例・正常例・例外を決める。支払う価値に結びつく負担を言語化する。
+3. 規約・lint・実装/レビューのスキル・導入文書を同じ変更で揃える。正当な認証・保存・commitを維持し、無関係な整理を混ぜない。
+4. 公開CLI、実リクエストとDB/描画、配布Gemを実行する。テストの成功だけで判断品質や市場価値を実証したとしない。
+5. 差分を趣旨と受け入れ条件へ照合して自己レビューする。独立した担当に生の課題と必要な資料を渡し、結果とコードを評価する。
+6. 妥当な問題を根本原因から直す。関連する実行を再検証し、A〜Fの残件と価値の判定を更新する。既に解決した論点へ根拠なく戻らない。
+
+## ループを止める条件
+
+技術的には、A〜Fの未解決の必須問題がなく、規約とスキルの判断が一致し、禁止例を拒否・正常例と明示例外を許可でき、導入先の既存ファイルと動作を保ち、公開経路・配布物・独立レビューが完了した時点で止める。
+
+同じ問題の修正が往復する、規約の価値より例外・層・手順の負担が増える、検証環境がない場合は、証拠と残件を残して判断へ戻す。際限なく新しい問題を探してルールを足さない。
+
+「お金を払ってでも欲しい」は、技術的完成だけでは立証できない。実チームで最初の複数変更の判断・探索・レビュー負担と例外の増え方を観測し、既存lintだけの場合との違いを評価する。自分のアプリでの実例がない時点で削減率や支払意思を作らない。
+
+## 今回の評価記録
+
+変更前の基準はd2f3139。基準・差分・検証入口を固定してから、実装と検証の結果をここへ追記する。
+
+### 実施結果（2026-10-06）
+
+| 項目 | 結果と証拠 |
+| --- | --- |
+| 変更前 | d2f3139を隔離して実行し、95 examples / 0 failures |
+| A・B: 基準と書き方 | T01〜T09、CRUD/model/operation、成功値・拒否・保存失敗、明示例外を一本化。README・導入・共通参照も更新 |
+| C: 検査 | ControllerCallbacksを標準ON、ModelCallbacks/ImplicitContext/Concernを追加。禁止・正常・許可・動的登録の境界を検証 |
+| D: 導入 | init-policyで規約とprofileを一緒に生成。既存ファイル・壊れたsymlink・再実行を上書きしない |
+| E: 実行と配布 | Ruby 4.0.5で最終133 examples / 0 failures、RuboCop 33 files / no offenses。旧6契約40 assertion＋新6契約30 assertion、旧6回帰＋新2回帰、禁止4例。buildと別bundleへのGem実インストール・公開CLI・ERB・両クライアントのスキル配置が成功 |
+| 下限互換性 | 隔離bundleのRuby 3.0.7、RuboCop 1.74.0、Rails 7.1.6で変更関連52 examples / 0 failures。追加cop・CLI・plugin・旧新実用検証を実行 |
+| スキル構造 | portable skill validatorとskill-creatorの3入口validatorが成功。文面の意味はこの構造検査で保証しない |
+| F: 独立判断・レビュー | 新規コンテキストの担当へ4課題を渡し、期待解答を渡さず判断。CRUDを直接更新、明細確定をmodel、外部決済をoperation＋commit後の永続記録処理へ配置。T02/T03/T04/T07の違反を区別し、許可認証とトップレベルviewは維持。差分・新規ファイルの最終必須問題0件 |
+
+### 反復で解消した問題
+
+- 旧方針は、callback・Concern・Currentと単一action partialの許可が文脈判断へ戻っていた。T01〜T09の標準と例外へ統一した。
+- 検証アプリのYAMLの階層誤りで、許可したはずの認証・commit hookが拒否された。実効profileと配布Gemの公開経路で発見し、階層を修正して再実行した。
+- 認可を削る回帰が一般lintの未使用引数警告で検出され、「lintを通る意味の不具合」の題材になっていなかった。tenant条件を存在確認へ弱める現実的な回帰へ変更し、lint成功と実DBのassertion失敗を両方確認した。
+- 独立レビューで古いレビュー表の「単一actionのpartialはinstance variableのままでよい」が残っていると指摘された。T07へ修正し、当該担当が解消を確認した。入口のスキルだけ更新しても参照先で判断がぶれるため、同梱参照もレビューする。
+- PRレビューで`before_commit`の検出漏れが見つかった。[Railsのcallback仕様](https://api.rubyonrails.org/classes/ActiveRecord/Callbacks.html)を確認し、単体と公開pluginの両経路で修正前の失敗を再現した。登録名の制限対象へ追加し、既定profileで暗黙の決済処理を拒否する回帰テストを通した。
+- 再レビューで、許可した業務定数を名前空間内の短い`Current`で参照すると誤検出する問題が見つかった。字句上のclass/module本体を考慮し、ネスト・絶対名・別名前空間・短縮したmodule宣言・superclass式の境界と公開pluginを検証した。全体の`Current`を許可する必要をなくし、型推論をしない限界も記録した。
+- 追加レビューで、`Invoice.after_commit`等の明示したmodelクラスへの登録が制限をすり抜けると指摘された。定数・名前空間付き定数・class取得も対象にし、単体と公開pluginで失敗を再現して修正した。許可された名前の基盤hookとtransactionインスタンスへの明示的登録は維持し、動的なmodelクラス取得は型推論できないためレビュー対象とした。
+
+### 今回の価値判定と停止
+
+技術的な必須問題は解消し、公開経路・配布物・対応下限・独立判断とレビューが完了したので、今回の修正ループを止める。ルールの追加を続ける根拠はない。
+
+観測できた価値は、同じ3種類の変更の配置・失敗契約が一つの標準へ収束すること、動く規約違反と不具合を分けること、認証や既存契約を保った導入と配布ができること。既存のRuboCopだけでは、operationの配置・例外の共有・実装とレビューの同一判断は供給されない。新しい層や実行依存をアプリへ一律追加せず、この判断と制限をまとめて提供する点に支払う理由があると評価する。
+
+これは独立したAI担当1件の判断課題と小さな検証アプリでの観測であり、多様な実開発者や中大規模本番チームでの実績ではない。実チームの初担当者の判断・探索・レビュー時間、誤検出、例外管理、既存lintのみとの比較、実際の支払意思は未観測として残す。市場価値を実証済みとは主張しない。

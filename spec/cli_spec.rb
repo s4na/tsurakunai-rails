@@ -11,6 +11,37 @@ RSpec.describe Tsurakunai::Rails::CLI do
                   File.expand_path("../exe/tsurakunai-rails", __dir__), *arguments, **options)
   end
 
+  it "creates portable team decisions and a usable profile without overwriting project instructions" do
+    Dir.mktmpdir do |project|
+      File.write(File.join(project, "AGENTS.md"), "existing instructions")
+      File.write(File.join(project, ".rubocop.yml"), "existing lint")
+      stdout, stderr, status = cli("init-policy", "--project", project)
+      expect(status.success?).to be(true), stderr
+      expect(stdout).to include("inherit_from: .rubocop-tsurakunai.yml")
+      expect(File.read(File.join(project, "RAILS_TEAM_POLICY.md"))).to eq(
+        File.read(File.expand_path("../skills/tsurakunai-rails/references/team-policy.md", __dir__))
+      )
+      expect(File.read(File.join(project, "AGENTS.md"))).to eq("existing instructions")
+      expect(File.read(File.join(project, ".rubocop.yml"))).to eq("existing lint")
+      File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team edits")
+      _, error, second = cli("init-policy", "--project", project)
+      expect(second.exitstatus).to eq(2)
+      expect(error).to include("Already exists")
+      expect(File.read(File.join(project, "RAILS_TEAM_POLICY.md"))).to eq("team edits")
+    end
+  end
+
+  it "does not partially create a policy when its lint profile exists, even as a broken symlink" do
+    Dir.mktmpdir do |project|
+      File.symlink("missing-profile", File.join(project, ".rubocop-tsurakunai.yml"))
+      _, stderr, status = cli("init-policy", "--project", project)
+      expect(status.exitstatus).to eq(2)
+      expect(stderr).to include("Already exists")
+      expect(File).not_to exist(File.join(project, "RAILS_TEAM_POLICY.md"))
+      expect(File.readlink(File.join(project, ".rubocop-tsurakunai.yml"))).to eq("missing-profile")
+    end
+  end
+
   %w[codex claude].each do |target|
     it "installs the complete #{target} skill and refuses replacement" do
       Dir.mktmpdir do |project|
