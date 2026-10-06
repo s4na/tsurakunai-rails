@@ -29,4 +29,52 @@ RSpec.describe RuboCop::Cop::TsurakunaiRails::ImplicitContext do
       end
     RUBY
   end
+
+  it "allows approved constants in their lexical module and nested class" do
+    expect_no_offenses(<<~RUBY)
+      module Electric
+        Current.measure
+        class Circuit
+          def measure
+            Current.measure
+          end
+        end
+      end
+    RUBY
+  end
+
+  it "does not extend namespace permission to absolute, unrelated or compact outer references" do
+    expect_offense(<<~RUBY)
+      module Electric
+        ::Current.user
+        ^^^^^^^^^ #{described_class::MSG}
+      end
+      module Billing
+        Current.user
+        ^^^^^^^ #{described_class::MSG}
+      end
+      module Electric::Tools
+        Current.user
+        ^^^^^^^ #{described_class::MSG}
+      end
+    RUBY
+  end
+
+  it "uses the absolute namespace when a module is reopened inside another module" do
+    expect_no_offenses(<<~RUBY)
+      module Billing
+        module ::Electric
+          Current.measure
+        end
+      end
+    RUBY
+  end
+
+  it "does not treat a superclass expression as inside the class namespace" do
+    expect_offense(<<~RUBY)
+      class Electric < Current
+                       ^^^^^^^ #{described_class::MSG}
+      end
+    RUBY
+  end
 end

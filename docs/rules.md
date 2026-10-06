@@ -47,6 +47,8 @@ ControllerCallbacksはcontrollerのreceiverなし/selfの登録を検出しま�
 
 ImplicitContextはmodels/jobs/operations/services/queries/forms/helpers/components内の末尾名Currentの定数参照を検出します。HTTP境界のcontrollerと定数のclass/module宣言は対象外です。CurrentAttributesの型推論はせず、別名・alias・ERB・別配置はレビューします。Concernはmodels/controllers/operations/services内のActiveSupport::Concernへのextend/includeを検出します。普通のmoduleや動的include、ライブラリ内部は検査できません。T04の暗黙APIはレビューで補います。
 
+`AllowedConstants: [Electric::Current]`は明示名に加え、`module Electric`の本体やその中にネストしたclass/moduleの`Current`を許可します。`::Current`、別名前空間、`module Electric::Tools`から外側の`Electric`への探索にはこの許可を広げません。[Rubyの字句上のネスト](https://docs.ruby-lang.org/en/3.3/syntax/modules_and_classes_rdoc.html)を使う構文検査で、定数の実在、同名定数による遮蔽、継承や動的評価の解決はしません。許可した業務定数へ解決することを確認し、曖昧な箇所では完全修飾名を使ってください。
+
 独自copは自動修正を実装しません。追加した上流copで自動修正を持つものもこのセットでは `AutoCorrect: false` にしています。修正後の仕様・安全性をレビューするためです。方針セットでも自動修正は無効です。`SaveBang`は型を推論せず、代入・引数・暗黙の戻り値などの全経路を保証しないため、永続化の結果を呼び出し元まで追います。
 
 独自のcontrollerルールは`app/controllers/**/*.rb`、modelルールは`app/models/**/*.rb`を対象にします。concernも含みます。別の配置を使う場合は`Include`を上書きしてください。継承関係やreceiverの型は推論せず、同名の独自APIを検出することがあります。動的な`send`、別レイヤー、bulk処理、動的optionsはコードレビューで確認します。
