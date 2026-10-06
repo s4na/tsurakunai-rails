@@ -103,20 +103,16 @@ module Tsurakunai
         raise ArgumentError, "Missing RAILS_TEAM_POLICY.md; run init-policy or supply your team policy first" unless File.file?(policy)
 
         if options[:target] == "codex"
-          override = File.join(project, "AGENTS.override.md")
-          raise ArgumentError, "AGENTS.override.md takes precedence; merge config/agent_rules.md into your active instructions" if File.exist?(override) || File.symlink?(override)
-
-          if custom_codex_instruction_config?(project)
-            raise ArgumentError, "Custom Codex fallback configuration detected; merge config/agent_rules.md into your active instructions"
-          end
-          destination = File.join(project, "AGENTS.md")
-        else
-          %w[.claude .claude/rules].each do |directory|
-            path = File.join(project, directory)
-            raise ArgumentError, "Refusing symlinked instruction directory: #{path}; merge the rules manually" if File.symlink?(path)
-          end
-          destination = File.join(project, ".claude", "rules", "tsurakunai-rails.md")
+          print File.read(File.join(ROOT, "config", "agent_rules.md"))
+          $stderr.puts "Manual integration required: merge these rules into your active project instructions."
+          $stderr.puts "Codex may use override, fallback or managed settings; no instruction file was created."
+          return 0
         end
+        %w[.claude .claude/rules].each do |directory|
+          path = File.join(project, directory)
+          raise ArgumentError, "Refusing symlinked instruction directory: #{path}; merge the rules manually" if File.symlink?(path)
+        end
+        destination = File.join(project, ".claude", "rules", "tsurakunai-rails.md")
         raise ArgumentError, "Already exists: #{destination}; merge config/agent_rules.md manually without replacing your instructions" if File.exist?(destination) || File.symlink?(destination)
 
         FileUtils.mkdir_p(File.dirname(destination))
@@ -126,25 +122,6 @@ module Tsurakunai
         puts "Installed #{destination}; required contracts and prohibited forms use RAILS_TEAM_POLICY.md."
         puts "Start a new agent session and verify the project instruction source is loaded."
         0
-      end
-
-      def custom_codex_instruction_config?(project)
-        codex_home = ENV.fetch("CODEX_HOME", File.join(Dir.home, ".codex"))
-        paths = [File.join(codex_home, "config.toml"), "/etc/codex/config.toml"]
-        paths << File.join(ENV.fetch("ProgramData"), "OpenAI", "Codex", "config.toml") if ENV.key?("ProgramData")
-        paths.concat(Dir.glob(File.join(codex_home, "*.config.toml")))
-        directory = project
-        loop do
-          paths << File.join(directory, ".codex", "config.toml")
-          parent = File.dirname(directory)
-          break if parent == directory
-
-          directory = parent
-        end
-        # Do not resolve TOML profiles/precedence or risk hiding an active fallback.
-        paths.uniq.any? do |path|
-          File.file?(path) && File.read(path).include?("project_doc_fallback_filenames")
-        end
       end
 
       def install_view_lint(arguments)

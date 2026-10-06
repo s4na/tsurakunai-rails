@@ -21,6 +21,7 @@ Gem・ルール・スキルの[導入手順](docs/installation.md)に従い、�
 ```sh
 bundle exec tsurakunai-rails init-policy
 bundle exec tsurakunai-rails install-rules --target codex
+# 表示した共通ルールを、有効なプロジェクト指示へ手動で統合する。
 bundle exec tsurakunai-rails install-skill --target codex
 # Claude Codeを使う場合は --target claude
 ```
@@ -33,7 +34,7 @@ bundle exec tsurakunai-rails check -- bin/rails test
 # ERBを使う場合: install-view-lint後に check --views -- ...
 ```
 
-`install-rules`はCodexの`AGENTS.md`またはClaude Codeの`.claude/rules/tsurakunai-rails.md`へ、同じ規約を読む共通ルールを配置します。既存の指示がある場合は上書きせず、[共通ルール](config/agent_rules.md)を手動で統合します。
+`install-rules`は同じ規約を読む[共通ルール](config/agent_rules.md)を提供します。Codexは表示したルールを有効なプロジェクト指示へ手動で統合し、Claude Codeは`.claude/rules/tsurakunai-rails.md`へ配置します。既存の指示を保全する[手順と読み込み確認](docs/installation.md#aiが常時読むルールを配置する)も行います。
 
 ## 実装とレビューを同じ基準にする
 

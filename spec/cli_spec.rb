@@ -7,10 +7,8 @@ require "rbconfig"
 
 RSpec.describe Tsurakunai::Rails::CLI do
   def cli(*arguments, env: {}, **options)
-    Dir.mktmpdir("tsurakunai-codex-home-") do |codex_home|
-      Open3.capture3({ "CODEX_HOME" => codex_home }.merge(env), RbConfig.ruby, "-I", File.expand_path("../lib", __dir__),
-                    File.expand_path("../exe/tsurakunai-rails", __dir__), *arguments, **options)
-    end
+    Open3.capture3(env, RbConfig.ruby, "-I", File.expand_path("../lib", __dir__),
+                  File.expand_path("../exe/tsurakunai-rails", __dir__), *arguments, **options)
   end
 
   it "creates portable team decisions and a usable profile without overwriting project instructions" do
@@ -44,14 +42,14 @@ RSpec.describe Tsurakunai::Rails::CLI do
     end
   end
 
-  %w[codex claude].each do |target|
+  %w[claude].each do |target|
     it "installs #{target} project rules pointing to the team's unchanged policy" do
       Dir.mktmpdir do |project|
         File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team-approved policy")
         File.write(File.join(project, "CLAUDE.md"), "existing Claude instructions")
         stdout, stderr, status = cli("install-rules", "--target", target, "--project", project)
         expect(status.success?).to be(true), stderr
-        relative = target == "codex" ? "AGENTS.md" : ".claude/rules/tsurakunai-rails.md"
+        relative = ".claude/rules/tsurakunai-rails.md"
         expect(stdout).to include(File.join(project, relative))
         expect(File.read(File.join(project, relative))).to eq(File.read(File.expand_path("../config/agent_rules.md", __dir__)))
         expect(File.read(File.join(project, "RAILS_TEAM_POLICY.md"))).to eq("team-approved policy")
@@ -62,7 +60,7 @@ RSpec.describe Tsurakunai::Rails::CLI do
     it "preserves existing #{target} rules and refuses reinstallation" do
       Dir.mktmpdir do |project|
         File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
-        relative = target == "codex" ? "AGENTS.md" : ".claude/rules/tsurakunai-rails.md"
+        relative = ".claude/rules/tsurakunai-rails.md"
         destination = File.join(project, relative)
         FileUtils.mkdir_p(File.dirname(destination))
         File.write(destination, "existing team rules")
@@ -76,7 +74,7 @@ RSpec.describe Tsurakunai::Rails::CLI do
     it "preserves a broken symlink at the #{target} rule destination" do
       Dir.mktmpdir do |project|
         File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
-        relative = target == "codex" ? "AGENTS.md" : ".claude/rules/tsurakunai-rails.md"
+        relative = ".claude/rules/tsurakunai-rails.md"
         destination = File.join(project, relative)
         FileUtils.mkdir_p(File.dirname(destination))
         File.symlink("missing-rule", destination)
@@ -85,6 +83,25 @@ RSpec.describe Tsurakunai::Rails::CLI do
         expect(stderr).to include("Already exists")
         expect(File.readlink(destination)).to eq("missing-rule")
         expect(File).not_to exist(File.join(File.dirname(destination), "missing-rule"))
+      end
+    end
+  end
+
+  %w[fresh existing].each do |state|
+    it "prints Codex rules for manual integration in a #{state} project without selecting instruction files" do
+      Dir.mktmpdir do |project|
+        File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
+        if state == "existing"
+          %w[AGENTS.md AGENTS.override.md TEAM_GUIDE.md].each do |name|
+            File.write(File.join(project, name), "existing #{name}")
+          end
+        end
+        before = Dir.children(project).to_h { |name| [name, File.read(File.join(project, name))] }
+        stdout, stderr, status = cli("install-rules", "--target", "codex", "--project", project)
+        expect(status.success?).to be(true), stderr
+        expect(stdout).to eq(File.read(File.expand_path("../config/agent_rules.md", __dir__)))
+        expect(stderr).to include("Manual integration required", "active project instructions")
+        expect(Dir.children(project).to_h { |name| [name, File.read(File.join(project, name))] }).to eq(before)
       end
     end
   end
@@ -109,8 +126,8 @@ RSpec.describe Tsurakunai::Rails::CLI do
       File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
       File.write(File.join(project, "AGENTS.override.md"), "active team instructions")
       _, stderr, status = cli("install-rules", "--target", "codex", "--project", project)
-      expect(status.exitstatus).to eq(2)
-      expect(stderr).to include("takes precedence")
+      expect(status.success?).to be(true), stderr
+      expect(stderr).to include("Manual integration required")
       expect(File).not_to exist(File.join(project, "AGENTS.md"))
       expect(File.read(File.join(project, "AGENTS.override.md"))).to eq("active team instructions")
     end
@@ -125,7 +142,7 @@ RSpec.describe Tsurakunai::Rails::CLI do
         File.write(File.join(codex_home, "config.toml"), configuration)
         _, stderr, status = cli("install-rules", "--target", "codex", "--project", project,
                                 env: { "CODEX_HOME" => codex_home })
-        expect(status.exitstatus).to eq(2)
+        expect(status.success?).to be(true), stderr
         expect(stderr).to include("fallback", "merge")
         expect(File).not_to exist(File.join(project, "AGENTS.md"))
         expect(File.read(File.join(project, "TEAM_GUIDE.md"))).to eq("active team guidance")
@@ -134,7 +151,7 @@ RSpec.describe Tsurakunai::Rails::CLI do
     end
   end
 
-  %w[project ancestor profile system].each do |layer|
+  %w[project ancestor profile system managed].each do |layer|
     it "preserves custom instruction discovery from a #{layer} config layer" do
       Dir.mktmpdir do |workspace|
         project = File.join(workspace, "app")
@@ -142,6 +159,7 @@ RSpec.describe Tsurakunai::Rails::CLI do
         config = case layer
                  when "project" then File.join(project, ".codex", "config.toml")
                  when "ancestor" then File.join(workspace, ".codex", "config.toml")
+                 when "managed" then File.join(codex_home, "managed_config.toml")
                  when "system" then File.join(workspace, "system", "OpenAI", "Codex", "config.toml")
                  else File.join(codex_home, "work.config.toml")
                  end
@@ -151,7 +169,7 @@ RSpec.describe Tsurakunai::Rails::CLI do
         File.write(config, %('project_doc_fallback_filenames' = [\n  ".agents.md"\n]\n))
         _, stderr, status = cli("install-rules", "--target", "codex", "--project", project,
                                 env: { "CODEX_HOME" => codex_home, "ProgramData" => File.join(workspace, "system") })
-        expect(status.exitstatus).to eq(2)
+        expect(status.success?).to be(true), stderr
         expect(stderr).to include("fallback", "merge")
         expect(File).not_to exist(File.join(project, "AGENTS.md"))
         expect(File.read(File.join(project, ".agents.md"))).to eq("custom team rules")

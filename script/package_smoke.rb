@@ -26,7 +26,6 @@ Bundler.with_unbundled_env do
     artifact = File.join(workspace, "package.gem")
     env = {
       "GEM_HOME" => gem_home,
-      "CODEX_HOME" => File.join(workspace, "codex-home"),
       "GEM_PATH" => ([gem_home] + Gem.path).join(File::PATH_SEPARATOR),
       "BUNDLE_IGNORE_CONFIG" => "1",
       "BUNDLE_FROZEN" => "false",
@@ -80,9 +79,10 @@ Bundler.with_unbundled_env do
     YAML
     run!(env, "bundle", "lock", "--local", directory: application)
     %w[codex claude].each do |target|
-      run!(env, "bundle", "exec", "tsurakunai-rails", "install-rules", "--target", target, directory: application)
-      rule_path = target == "codex" ? "AGENTS.md" : ".claude/rules/tsurakunai-rails.md"
-      raise "Packaged rules differ from the project guidance" unless File.read(File.join(application, rule_path)) == File.read(File.join(root, "config", "agent_rules.md"))
+      rules = run!(env, "bundle", "exec", "tsurakunai-rails", "install-rules", "--target", target, directory: application)
+      installed_rules = target == "codex" ? rules : File.read(File.join(application, ".claude", "rules", "tsurakunai-rails.md"))
+      raise "Packaged rules differ from the project guidance" unless installed_rules == File.read(File.join(root, "config", "agent_rules.md"))
+      raise "Codex rules must not select an instruction file" if target == "codex" && File.exist?(File.join(application, "AGENTS.md"))
       run!(env, "bundle", "exec", "tsurakunai-rails", "install-skill", "--target", target, directory: application)
       folder = target == "codex" ? ".agents" : ".claude"
       installed = File.join(application, folder, "skills", "tsurakunai-rails")
@@ -125,6 +125,6 @@ Bundler.with_unbundled_env do
       raise "Installed preset did not report #{cop}" unless offenses.any? { |o| o.fetch("cop_name") == cop }
     end
 
-    puts "Package smoke passed: installed gem, plugin, CLI, view lint, Codex/Claude rules and skills."
+    puts "Package smoke passed: installed gem, plugin, CLI, view lint, Codex rule output for manual integration, Claude rules and both skill sets."
   end
 end

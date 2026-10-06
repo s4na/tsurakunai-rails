@@ -14,7 +14,7 @@ actionlint
 zizmor --offline .github/workflows
 ```
 
-CIはcopの正常系・違反・例外・対象パス・非自動修正、CLIの失敗時の継続、AIルールの配置と有効な既存指示・symlinkの保護、ビルドしたGemの実インストール・利用まで確認します。GitHub ActionsはSHA固定・read-only権限・認証情報を残さないcheckoutにし、actionlintとzizmorで検証します。
+CIはcopの正常系・違反・例外・対象パス・非自動修正、CLIの失敗時の継続、AIルールの表示・配置と有効な既存指示・symlinkの保護、ビルドしたGemの実インストール・利用まで確認します。GitHub ActionsはSHA固定・read-only権限・認証情報を残さないcheckoutにし、actionlintとzizmorで検証します。
 
 [Railsの実用検証](acceptance.md)では、6つの正常な契約と6つの回帰を実際のリクエスト・SQLite・描画で確認し、配布Gemでも同じ公開CLIを実行します。
 
