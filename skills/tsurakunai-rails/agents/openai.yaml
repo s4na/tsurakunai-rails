@@ -1,4 +1,4 @@
 interface:
   display_name: "つらくないRails"
-  short_description: "チーム規約を共有しRailsの実装・レビュー手順へ案内する"
-  default_prompt: "$tsurakunai-rails を使い、チーム規約に沿って依頼に合う手順で進めてください。"
+  short_description: "必須条件と禁止形を共有しRailsの実装・レビューへ案内する"
+  default_prompt: "$tsurakunai-rails を使い、チーム規約の必須条件と禁止形の両方に従って依頼を進めてください。"

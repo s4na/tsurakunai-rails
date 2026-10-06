@@ -1,4 +1,4 @@
 interface:
   display_name: "つらくないRails レビュー"
-  short_description: "同じチーム規約でRailsの規約違反と不具合を分けて確認する"
-  default_prompt: "$tsurakunai-rails-review を使い、このRails変更の規約違反と不具合を編集せず確認してください。"
+  short_description: "Railsの必須条件の欠落と禁止形の使用を同じ規約で検査する"
+  default_prompt: "$tsurakunai-rails-review を使い、必須条件の欠落・禁止形の使用・不具合を区別して編集せず確認してください。"

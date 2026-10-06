@@ -17,6 +17,7 @@ module Tsurakunai
       def run(arguments)
         case arguments.shift
         when "init-policy" then init_policy(arguments)
+        when "install-rules" then install_rules(arguments)
         when "install-skill" then install_skill(arguments)
         when "install-view-lint" then install_view_lint(arguments)
         when "check" then check(arguments)
@@ -84,6 +85,43 @@ module Tsurakunai
           FileUtils.cp_r(File.join(ROOT, "skills", name), destination)
           puts "Installed #{VERSION}: #{destination}"
         end
+        0
+      end
+
+      def install_rules(arguments)
+        options = { project: Dir.pwd }
+        parser = OptionParser.new do |opts|
+          opts.on("--target TARGET", %w[codex claude]) { |value| options[:target] = value }
+          opts.on("--project PATH") { |value| options[:project] = value }
+        end
+        parser.parse!(arguments)
+        raise ArgumentError, "Specify --target codex or --target claude" unless options[:target]
+        raise ArgumentError, "Unexpected arguments: #{arguments.join(' ')}" unless arguments.empty?
+
+        project = File.realpath(options[:project])
+        policy = File.join(project, "RAILS_TEAM_POLICY.md")
+        raise ArgumentError, "Missing RAILS_TEAM_POLICY.md; run init-policy or supply your team policy first" unless File.file?(policy)
+
+        if options[:target] == "codex"
+          override = File.join(project, "AGENTS.override.md")
+          raise ArgumentError, "AGENTS.override.md takes precedence; merge config/agent_rules.md into your active instructions" if File.exist?(override) || File.symlink?(override)
+
+          destination = File.join(project, "AGENTS.md")
+        else
+          %w[.claude .claude/rules].each do |directory|
+            path = File.join(project, directory)
+            raise ArgumentError, "Refusing symlinked instruction directory: #{path}; merge the rules manually" if File.symlink?(path)
+          end
+          destination = File.join(project, ".claude", "rules", "tsurakunai-rails.md")
+        end
+        raise ArgumentError, "Already exists: #{destination}; merge config/agent_rules.md manually without replacing your instructions" if File.exist?(destination) || File.symlink?(destination)
+
+        FileUtils.mkdir_p(File.dirname(destination))
+        File.open(destination, File::WRONLY | File::CREAT | File::EXCL) do |file|
+          file.write(File.read(File.join(ROOT, "config", "agent_rules.md")))
+        end
+        puts "Installed #{destination}; required contracts and prohibited forms use RAILS_TEAM_POLICY.md."
+        puts "Start a new agent session and verify the project instruction source is loaded."
         0
       end
 
@@ -156,6 +194,7 @@ module Tsurakunai
         <<~TEXT
           tsurakunai-rails #{VERSION}
           init-policy [--project PATH]
+          install-rules --target codex|claude [--project PATH]
           install-skill --target codex|claude [--project PATH]
           install-view-lint [--strict-locals] [--project PATH]
           check [--views] -- TEST_COMMAND [ARGUMENTS...]

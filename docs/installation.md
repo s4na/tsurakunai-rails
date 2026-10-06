@@ -28,7 +28,10 @@ plugins:
 bundle install
 bundle exec tsurakunai-rails init-policy
 # プロジェクト内へ配置する。必要なクライアントだけ実行する。
+bundle exec tsurakunai-rails install-rules --target codex
 bundle exec tsurakunai-rails install-skill --target codex
+# Claude Codeを使う場合
+bundle exec tsurakunai-rails install-rules --target claude
 bundle exec tsurakunai-rails install-skill --target claude
 ```
 
@@ -41,7 +44,19 @@ inherit_from:
   - .rubocop-tsurakunai.yml
 ```
 
-既存のAGENTS.md/CLAUDE.mdへは「Rails変更はRAILS_TEAM_POLICY.mdとtsurakunai-railsスキルを使用」と追記すると発見しやすくなります。installerはこれらの指示ファイルを変更しません。必須の認証hook名と理由・代替保証を生成ファイルへ登録してから検査してください。
+必須の認証hook名と理由・代替保証を生成ファイルへ登録してから検査してください。
+
+## AIが常時読むルールを配置する
+
+`install-rules`は`RAILS_TEAM_POLICY.md`があるプロジェクトへ[共通ルール](../config/agent_rules.md)を配置します。Codexはルートの`AGENTS.md`、Claude Codeは`.claude/rules/tsurakunai-rails.md`です。ルールには「必須の形を満たす」「禁止形を使わない」を実装とレビューの両方に課し、具体的なT01〜T09は規約の正本を参照します。スキルが未導入でも同じ規約を使います。
+
+配置先は[Codexのプロジェクト指示](https://learn.chatgpt.com/docs/agent-configuration/agents-md#layer-project-instructions)と[Claude Codeのルール読み込み](https://code.claude.com/docs/en/memory)に従います。Claude側はpaths指定のないMarkdownなので、特定ファイルを開いたときだけのルールにはしません。AIへの指示は実装・レビューの基準であり、意味的な設計を自動的に強制するlintではありません。
+
+既存の配置先は上書きしません。Codexで`AGENTS.override.md`がある場合も、無視される`AGENTS.md`を作らず終了します。既存の有効な指示へ共通ルールを手動で統合してください。Claudeの指示ディレクトリがsymlinkなら共有先へ書かず終了するため、同様に手動で統合します。既存`CLAUDE.md`やグローバル設定、チーム規約は変更しません。
+
+配置後は新しいエージェントセッションを開始し、読み込んだ指示のソースを確認します。Codexでは読み込んだ指示の列挙を依頼し、Claude Codeでは`/context`で確認できます。下位の指示やクライアント設定の除外も確認してください。配布物からのファイル配置は検証していますが、各クライアントの実セッションでの自動読み込みはこのリポジトリのCIでは検証していません。
+
+更新時は共通ルール、3スキル、チーム規約をそれぞれ新しい同梱版と比較し、チームの変更を残して統合します。アンインストールでは統合したルールの該当部分だけを取り除き、他の指示を消しません。Claudeの専用ファイルも、ローカル追記がないか確認してから取り除きます。
 
 ## 使う
 
@@ -62,7 +77,7 @@ Ruby lint・View lint・Testsごとの結果を表示します。`View lint: SKI
 
 実装するときはCodexで`$tsurakunai-rails-implement この変更を実装してください`、レビューでは`$tsurakunai-rails-review この変更を編集せず確認してください`と呼びます。Claude Codeは先頭を`/`にします。既存の`tsurakunai-rails`も両手順へ案内する入口として残ります。
 
-実装スキルは入口・状態・失敗・テストを作る手順、レビュースキルは崩れる経路を確認する手順です。[共通資料](../skills/tsurakunai-rails/references/daily-design.md)を共有します。**CLIの成功は文脈レビューの完了ではありません。** CIはAIの判断を自動実行しません。
+実装スキルは必須の入口・状態・失敗契約を作り禁止形を避ける手順、レビュースキルは必須条件の欠落と禁止形の使用を両方確認する手順です。[共通資料](../skills/tsurakunai-rails/references/daily-design.md)を共有します。**CLIの成功は文脈レビューの完了ではありません。** CIはAIの判断を自動実行しません。
 
 ## 標準方針を調整する
 

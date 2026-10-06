@@ -17,7 +17,7 @@ Gem::Specification.new do |spec|
     "default_lint_roller_plugin" => "RuboCop::TsurakunaiRails::Plugin",
     "rubygems_mfa_required" => "true"
   }
-  spec.files = Dir["lib/**/*.rb", "exe/*", "config/*.yml", "skills/**/*", "README.md", "LICENSE", "docs/*.md"]
+  spec.files = Dir["lib/**/*.rb", "exe/*", "config/*.{yml,md}", "skills/**/*", "README.md", "LICENSE", "docs/*.md"]
   spec.bindir = "exe"
   spec.executables = ["tsurakunai-rails"]
   spec.require_paths = ["lib"]

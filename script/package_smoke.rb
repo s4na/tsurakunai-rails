@@ -54,7 +54,8 @@ Bundler.with_unbundled_env do
       raise "Missing default policy: #{name}" unless defaults.fetch("TsurakunaiRails/#{name}").fetch("Enabled")
     end
     run!(env, "bundle", "exec", "tsurakunai-rails", "init-policy", directory: application)
-    raise "Missing packaged team policy" unless File.file?(File.join(application, "RAILS_TEAM_POLICY.md"))
+    policy = File.join(application, "RAILS_TEAM_POLICY.md")
+    raise "Packaged team policy differs from the shared contract" unless File.read(policy) == File.read(File.join(root, "skills", "tsurakunai-rails", "references", "team-policy.md"))
     File.write(File.join(application, ".rubocop.yml"), <<~YAML)
       plugins:
         - rubocop-tsurakunai-rails
@@ -78,12 +79,15 @@ Bundler.with_unbundled_env do
     YAML
     run!(env, "bundle", "lock", "--local", directory: application)
     %w[codex claude].each do |target|
+      run!(env, "bundle", "exec", "tsurakunai-rails", "install-rules", "--target", target, directory: application)
+      rule_path = target == "codex" ? "AGENTS.md" : ".claude/rules/tsurakunai-rails.md"
+      raise "Packaged rules differ from the project guidance" unless File.read(File.join(application, rule_path)) == File.read(File.join(root, "config", "agent_rules.md"))
       run!(env, "bundle", "exec", "tsurakunai-rails", "install-skill", "--target", target, directory: application)
       folder = target == "codex" ? ".agents" : ".claude"
       installed = File.join(application, folder, "skills", "tsurakunai-rails")
       puts run!(env, RbConfig.ruby, File.join(root, "script/validate_skill.rb"), File.join(application, folder, "skills"), directory: application)
       %w[review.md responsibilities.md views.md daily-design.md team-policy.md].each do |reference|
-        raise "Missing installed skill reference: #{reference}" unless File.file?(File.join(installed, "references", reference))
+        raise "Packaged skill reference differs: #{reference}" unless File.read(File.join(installed, "references", reference)) == File.read(File.join(root, "skills", "tsurakunai-rails", "references", reference))
       end
     end
     model_dir = File.join(application, "app", "models")
@@ -120,6 +124,6 @@ Bundler.with_unbundled_env do
       raise "Installed preset did not report #{cop}" unless offenses.any? { |o| o.fetch("cop_name") == cop }
     end
 
-    puts "Package smoke passed: installed gem, plugin, CLI, view lint, Codex skill, Claude skill."
+    puts "Package smoke passed: installed gem, plugin, CLI, view lint, Codex/Claude rules and skills."
   end
 end

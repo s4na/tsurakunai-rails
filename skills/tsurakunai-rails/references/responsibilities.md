@@ -50,6 +50,7 @@ def approve!(approved_by:)
 
     update!(status: :approved, approved_by: approved_by)
   end
+  self
 end
 ```
 
@@ -75,7 +76,7 @@ end
 
 **transaction**: DB上で一体となる変更を明示し、同じDB接続のtransactionで原子性を保つ。別DB・外部API・queueまで一緒にrollbackできるとは扱わない。内部のmodel操作は自身の不変条件を維持し、外側の手順は失敗を握りつぶさない。save callbackから別のuse caseを無条件に起動して循環・重複を作らない。副作用・再試行・冪等性は[外部APIとジョブ](boundaries.md#s06-外部副作用ジョブ)/[同時更新](data.md#s07-競合状態遷移)も確認する。
 
-**例外**: ただ `User.create!` を転送するだけのserviceを全modelに作らない。規約の違いはそれだけで欠陥ではない。変更されない全controllerへ同じ抽出を広げない。
+**例外**: ただ `User.create!` を転送するだけのserviceを全modelに作らない。導入先に明示された別契約は維持する。明示規約がない新設の薄いserviceは、動作してもT05の規約違反である。変更されない全controllerへ同じ抽出を広げない。
 
 **検証**: 処理の公開入口から最終DB状態を確認し、途中の失敗時に必要な変更が残らないことを検証する。外部境界はstubできるが、重要な入力・冪等キー・失敗時の処理は検証する。
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "つらくないRails 実装"
-  short_description: "チーム規約に沿いRailsの置き場所・失敗・公開結果を揃える"
-  default_prompt: "$tsurakunai-rails-implement を使い、チーム規約に沿ってこのRails変更を実装・検証してください。"
+  short_description: "Rails規約の必須条件を実装し禁止形を避け両方を検証する"
+  default_prompt: "$tsurakunai-rails-implement を使い、必須条件を満たし禁止形を使わないRails変更を実装・検証してください。"
