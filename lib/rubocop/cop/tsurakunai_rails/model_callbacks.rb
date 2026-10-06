@@ -10,7 +10,7 @@ module RuboCop
           before_validation after_validation before_save around_save after_save
           before_create around_create after_create before_update around_update after_update
           before_destroy around_destroy after_destroy after_initialize after_find after_touch
-          after_commit after_rollback after_save_commit after_create_commit after_update_commit
+          before_commit after_commit after_rollback after_save_commit after_create_commit after_update_commit
           after_destroy_commit set_callback
         ].freeze
         RESTRICT_ON_SEND = CALLBACKS
