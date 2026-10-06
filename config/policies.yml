@@ -1,4 +1,4 @@
-# Legacy strict preset, including the optional blanket callback restriction.
+# Compatibility preset; current defaults also enforce explicit flow.
 TsurakunaiRails/ControllerCallbacks:
   Enabled: true
 TsurakunaiRails/DefaultScope:

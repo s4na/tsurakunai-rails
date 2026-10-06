@@ -27,9 +27,9 @@ invoice.approve!(approved_by: current_user)
 redirect_to invoice
 ```
 
-**エラーの扱い**: input不正、権限不足、対象不存在、業務上の拒否、想定外の障害を区別する。modelや処理からHTTP statusを返させず、controllerで応答へ対応させる。`rescue StandardError`ですべてを成功や入力不正へ変えない。例外とresult objectのどちらも認めるが、成功か失敗かを呼び出し元が無視できる設計を見落とさない。
+**エラーの扱い**: input不正、権限不足、対象不存在、業務上の拒否、想定外の障害を区別する。modelや処理からHTTP statusを返させず、controllerで応答へ対応させる。`rescue StandardError`ですべてを成功や入力不正へ変えない。T08に従い、既存契約がなければ業務操作は成功時に対象を返し、拒否を業務例外・保存失敗をAR例外で伝える。
 
-**例外**: 単一actionの短い処理をラップするだけのserviceやDTOを要求しない。HTML/JSONのresponse分岐はHTTPの責務であり、業務ロジックの重複とは限らない。認証・ロード等のcallbackは、対象と順序の契約を満たす通常の実装として認める。
+**例外**: 単一actionの短い処理をラップするだけのserviceやDTOを要求しない。HTML/JSONのresponse分岐はHTTPの責務であり、業務ロジックの重複とは限らない。認証等の事前許可hookは維持する。対象ロードはactionで明示し、未許可callbackをT01の違反として扱う。
 
 **検証**: request testで認可・入力・成功と失敗のstatus/redirect・状態不変を確認し、同じ業務操作を別の入口から呼んだ結果も必要に応じて検証する。「serviceを呼ぶこと」だけで保証を終えない。
 
@@ -55,9 +55,9 @@ end
 
 `with_lock`だけで二重requestの冪等性や認可は保証されない。直接 `update!(status: ...)` で操作を迂回する呼び出し元が残っていないか追う。必要に応じて遷移のvalidation・DB制約・操作APIの使い方を合わせる。modelにメソッドを置いただけで全入口の保証ができたと扱わない。
 
-**callbackとvalidation**: 局所的で決定的な正規化などはmodel callbackの候補。ただし、呼び出し元が渡した値を意図せず変更しない。validationは正しさの検査を行い、外部通信・別行の作成・メール送信などを隠して実行しない。複数modelや外部副作用を伴う業務は[複数モデルの更新](responsibilities.md#s15-複数モデルの業務処理に明示的な入口を作る)・[外部APIとジョブ](boundaries.md#s06-外部副作用ジョブ)へ。全callbackを禁止せず、saveのたびに何が起きるかを読める範囲へ保つ。
+**callbackとvalidation**: 局所的で決定的な正規化などはmodel callbackの候補。ただし、呼び出し元が渡した値を意図せず変更しない。validationは正しさの検査を行い、外部通信・別行の作成・メール送信などを隠して実行しない。複数modelや外部副作用を伴う業務は[複数モデルの更新](responsibilities.md#s15-複数モデルの業務処理に明示的な入口を作る)・[外部APIとジョブ](boundaries.md#s06-外部副作用ジョブ)へ。T02に従い、登録種類・名前を事前許可したhookだけを使う。局所的正規化も実装者ごとに許可を増やさない。
 
-**scopeと取得**: scopeはrelationとして合成できる明示的な条件にする。時刻は定義時に固定せず呼び出す時点の業務上の境界を使う。tenantの取得は引数や呼び出し元のrelationへ明示し、`Current`の暗黙の値を使う場合はjob/consoleでの初期化・解除・境界保証を確認する。標準のsave/destroyなどの契約を上書きして独自処理を隠さない。
+**scopeと取得**: scopeはrelationとして合成できる明示的な条件にする。時刻は定義時に固定せず呼び出す時点の業務上の境界を使う。tenantの取得は引数や呼び出し元のrelationへ明示し、T03に従い、model/jobでは`Current`を使わずactor・tenantを引数や取得済みrelationで渡す。標準のsave/destroyなどの契約を上書きして独自処理を隠さない。
 
 **例外**: Active Record modelを属性と関連だけの箱へ変えることを要求しない。永続化から独立した計算は、分離によって理解・テストしやすくなる単位でPOROや関数へ分ける。メソッド数だけで分割しない。`params`などが正当な業務属性なら、その名前だけでHTTP依存と扱わない。ModelRequestContextの許可名や狭い例外で対応する。
 
@@ -69,7 +69,7 @@ end
 
 **起きやすい問題**: controller・model callback・jobにまたがって注文と在庫と履歴を変更し、途中で失敗すると一部だけ残る。modelが関係の薄い全業務を引き受ける。すべての保存をserviceへ移した結果、常に守るべきmodelの条件は逆に抜ける。
 
-**選ぶ順序**: 一つのmodelまたは自然な集約で表現できる操作なら、その公開操作を候補にする。複数の集約・業務の手順・外部境界をまたぎ、処理の成功条件とtransactionを一つに見せる必要があるなら、プロジェクトの規約に合う普通のRuby object（use case / operation / service等）を選ぶ。共通の`.call`基底classやresult frameworkの導入を必須にしない。
+**選ぶ順序**: 一つのmodelまたは自然な集約で表現できる操作なら、その公開操作を候補にする。複数の集約・業務の手順・外部境界をまたぎ、処理の成功条件とtransactionを一つに見せる必要があるなら、T05に従い、既存の明示規約がなければapp/operationsの普通のclassのcallへ置く。共通の`.call`基底classやresult frameworkの導入を必須にしない。
 
 **引数と戻り値**: 許可済みの具体的な値・actor・対象を渡し、HTTPのparams/session/renderは渡さない。成功時に何を返すか、業務上の拒否と障害をどう伝えるかを決める。request/job双方の認可や不変条件が維持される位置を確認し、controllerで認可済みという前提だけでjobからの操作を認めない。
 

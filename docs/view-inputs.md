@@ -1,6 +1,6 @@
 # 変数を追い回さないビューへの導入
 
-再利用partialの入力を明示し、渡し忘れは描画時に失敗させる。controllerの失敗経路まで表示をテストする。この三つを組み合わせて、レビューする人が暗黙の変数を毎回探す負担を減らします。この入力規約を採用したいチーム向けの任意セットです。単一action専用のpartialが正しい対象を表示しているなら、instance variableの存在だけで移行を要求しません。
+再利用partialの入力を明示し、渡し忘れは描画時に失敗させる。controllerの失敗経路まで表示をテストする。この三つを組み合わせて、レビューする人が暗黙の変数を毎回探す負担を減らします。T07は単一action専用も含めlocalsを標準とします。ERB用の実行依存と設定は別途導入し、既存partialは変更対象から段階的に移行します。
 
 [共通の設計判断](../skills/tsurakunai-rails/references/daily-design.md#callbackcurrent表示)に沿って、明示入力のpartialや利益のあるcomponentを選びます。このERBセットはpartialの入力契約を補助するものです。componentの採用を自動判定したり、partialを変換したりはしません。
 
@@ -21,7 +21,7 @@ bundle exec tsurakunai-rails check --views -- bin/rails test
 # RSpecの場合は末尾を bundle exec rspec にする
 ```
 
-`install-view-lint` は `.erb_lint.yml` と `.erb_linters/tsurakunai_partial_inputs.rb` を配置し、既存ファイルを上書きしません。既存設定がある場合はGem内の `config/erb_lint_strict.yml` の必要な項目を手動でマージし、custom linter用のloaderに `require "tsurakunai/rails/erb_lint/partial_inputs"` を配置します。入力規約を選び、strict localsが非対応のRailsでは `--strict-locals` を省略します。Haml/Slim等の既存linterはそのプロジェクトの入口で実行します。
+`install-view-lint` は `.erb_lint.yml` と `.erb_linters/tsurakunai_partial_inputs.rb` を配置し、既存ファイルを上書きしません。既存設定がある場合はGem内の `config/erb_lint_strict.yml` の必要な項目を手動でマージし、custom linter用のloaderに `require "tsurakunai/rails/erb_lint/partial_inputs"` を配置します。strict localsが非対応のRailsでは `--strict-locals` を省略します。Haml/Slim等の既存linterはそのプロジェクトの入口で実行します。
 
 `check --views` はRuby lint・ERB lint・指定テストを実行し、どれかが失敗すれば終了コード1にします。lintの失敗やERB設定の不足でもテストを実行します。`--views` なしの既存動作は同じです。CIにも同じコマンドを配置します。
 
@@ -35,14 +35,14 @@ bundle exec tsurakunai-rails check --views -- bin/rails test
 
 書式やタグの好みのルールは有効にしません。自動修正は実行せず、partialとすべてのrender呼び出し元を一緒に直します。`StrictLocals` の自動修正で空の入力宣言だけを足すと、必要な入力を壊す可能性があります。
 
-## 入力の規約を選んだpartialから移す
+## 変更するpartialから段階的に移す
 
 1. partialの `@invoice`、表示フラグ、helperの隠れた依存を調べ、renderの呼び出し元を列挙する。業務上の必須入力と任意の装飾を分ける。
 2. recordは `invoice:` 等のlocalへ渡し、partialも同じlocalを使う。collectionのlocal名も揃える。呼び出し元だけを変更して終えない。
 3. 対応環境では `<%# locals: (invoice:, can_edit:) %>` のように必須入力を宣言する。安全なdefaultが仕様として決まる任意入力だけにdefaultを付ける。
 4. 通常の描画、異なるrecordと権限条件、validation失敗時のerrors・入力値・選択肢を確認する。ボタン非表示に加え、直接の更新requestでも認可を確認する。
 
-導入範囲は再利用するpartial等に絞れます。既存の全partialへ規約を広げる必要はありません。規約を選んだ範囲で必要なら、ERB Lintのlinter単位の `exclude` や狭い `erb_lint:disable TsurakunaiPartialInputs` で理由つきの移行例外を残します。ファイルを全検査からexcludeすると構造の検査も失うため、必要なlinterだけの例外を優先します。
+既存の未移行partialは対象を明示して残し、変更するpartialからT07へ寄せます。移行中に必要なら、ERB Lintのlinter単位の `exclude` や狭い `erb_lint:disable TsurakunaiPartialInputs` で理由つきの移行例外を残します。ファイルを全検査からexcludeすると構造の検査も失うため、必要なlinterだけの例外を優先します。
 
 ## 自動検査で残る部分
 

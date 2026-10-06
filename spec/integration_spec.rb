@@ -40,6 +40,7 @@ RSpec.describe "RuboCop plugin integration" do
       report = JSON.parse(stdout)
       offenses = report.fetch("files").flat_map { |file| file.fetch("offenses") }
       expect(offenses.map { |offense| offense.fetch("cop_name") }.tally).to eq(
+        "TsurakunaiRails/ControllerCallbacks" => 2,
         "TsurakunaiRails/ModelRequestContext" => 1,
         "TsurakunaiRails/DefaultScope" => 1,
         "TsurakunaiRails/ValidationBypass" => 1
@@ -53,7 +54,7 @@ RSpec.describe "RuboCop plugin integration" do
       expect(status.exitstatus).to eq(1), stderr
       remaining = JSON.parse(stdout).fetch("files").flat_map { |file| file.fetch("offenses") }
       expect(remaining.map { |offense| offense.fetch("cop_name") }.uniq).to match_array(
-        %w[TsurakunaiRails/ModelRequestContext TsurakunaiRails/ValidationBypass]
+        %w[TsurakunaiRails/ControllerCallbacks TsurakunaiRails/ModelRequestContext TsurakunaiRails/ValidationBypass]
       )
     end
   end

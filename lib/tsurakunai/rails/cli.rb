@@ -16,6 +16,7 @@ module Tsurakunai
 
       def run(arguments)
         case arguments.shift
+        when "init-policy" then init_policy(arguments)
         when "install-skill" then install_skill(arguments)
         when "install-view-lint" then install_view_lint(arguments)
         when "check" then check(arguments)
@@ -31,6 +32,33 @@ module Tsurakunai
       end
 
       private
+
+      def init_policy(arguments)
+        options = { project: Dir.pwd }
+        parser = OptionParser.new do |opts|
+          opts.on("--project PATH") { |value| options[:project] = value }
+        end
+        parser.parse!(arguments)
+        raise ArgumentError, "Unexpected arguments: #{arguments.join(' ')}" unless arguments.empty?
+
+        project = File.realpath(options[:project])
+        files = {
+          "RAILS_TEAM_POLICY.md" => "skills/tsurakunai-rails/references/team-policy.md",
+          ".rubocop-tsurakunai.yml" => "config/project.yml"
+        }
+        files.each_key do |name|
+          destination = File.join(project, name)
+          raise ArgumentError, "Already exists: #{destination}; review the team policy before replacing it" if File.exist?(destination) || File.symlink?(destination)
+        end
+        files.each do |name, source|
+          FileUtils.cp(File.join(ROOT, source), File.join(project, name))
+          puts "Created #{File.join(project, name)}"
+        end
+        puts "Merge into .rubocop.yml: inherit_from: .rubocop-tsurakunai.yml"
+        puts "Approve required authentication hooks before checking; keep team exceptions in RAILS_TEAM_POLICY.md."
+        puts "Existing .rubocop.yml, AGENTS.md and CLAUDE.md were not modified."
+        0
+      end
 
       def install_skill(arguments)
         options = { project: Dir.pwd }
@@ -127,6 +155,7 @@ module Tsurakunai
       def usage
         <<~TEXT
           tsurakunai-rails #{VERSION}
+          init-policy [--project PATH]
           install-skill --target codex|claude [--project PATH]
           install-view-lint [--strict-locals] [--project PATH]
           check [--views] -- TEST_COMMAND [ARGUMENTS...]

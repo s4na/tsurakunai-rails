@@ -1,6 +1,6 @@
 # つらくないためのルール一覧
 
-日常設計のスキル方針を主軸に、設計方針7ルールと補助の事故防止8ルールを標準で有効にします。RSpec向け7ルールも標準ON、ERB入力検査はERB利用アプリで設定します。既存copはRuboCop Rails / RSpecを利用し、同じ検査を再実装しません。設計方針・事故防止の両セットはplugin読み込みだけで有効になります。RSpecもplugin読み込みで有効です。既存の`config/rspec.yml`は互換用に残しています。
+日常設計のスキル方針を主軸に、設計方針11ルールと補助の事故防止8ルールを標準で有効にします。RSpec向け7ルールも標準ON、ERB入力検査はERB利用アプリで設定します。既存copはRuboCop Rails / RSpecを利用し、同じ検査を再実装しません。設計方針・事故防止の両セットはplugin読み込みだけで有効になります。RSpecもplugin読み込みで有効です。既存の`config/rspec.yml`は互換用に残しています。
 
 lintの指摘だけでは不具合と断定できません。実際の型、データ、呼び出し元を確認して修正の要否を判断します。新しいDB制約・削除・例外を機械的に導入しません。導入先の明示設定が優先されます。
 
@@ -8,11 +8,11 @@ lintの指摘だけでは不具合と断定できません。実際の型、デ�
 
 ## 標準セット
 
-以下は既存の事故防止ルールです。日常設計を支える補助の検査として維持します。
+基準は[チーム規約T01〜T09](../skills/tsurakunai-rails/references/team-policy.md)です。以下は既存の事故防止ルールです。日常設計を支える補助の検査として維持します。
 
 | cop | 防ぎたい事故 | 直すときの注意 |
 | --- | --- | --- |
-| Rails/ActiveRecordOverride | 標準の永続化APIの契約が上書きされる | lifecycle契約を維持する。model callbackを全部禁止しない |
+| Rails/ActiveRecordOverride | 標準の永続化APIの契約が上書きされる | lifecycle契約を維持し、必要なhookはT02の明示許可として残す |
 | Rails/DuplicateAssociation | 同名の関連の定義が消える | 意図を一つに整理。継承を含む別ファイルの競合はレビュー |
 | Rails/AfterCommitOverride | 同名のcommit hookが別の登録に置き換わる | 対象イベントを一つの登録にまとめる。配信保証は別に確認 |
 | Rails/EnumUniqueness | 異なる状態が同じDB値に対応する | 重複を解消。既存データの移行計画も確認 |
@@ -25,10 +25,14 @@ lintの指摘だけでは不具合と断定できません。実際の型、デ�
 
 ## 設計方針セット（標準ON）
 
-以下は不具合の断定ではなく、このパッケージの標準の設計方針です。合わないcopは個別に`Enabled: false`を設定できます。既存の`config/policies.yml`はcallback全面禁止を含む厳格presetとして残します。通常の導入では不要です。許可名や対象範囲も調整できます。
+以下は不具合の断定ではなく、このパッケージの標準の設計方針です。チーム規約T01〜T09のうち構文で検査できる制限です。個別OFF・許可名・対象範囲のoverrideは可能ですが、変更する理由と代替保証をRAILS_TEAM_POLICY.mdへ揃えます。既存のconfig/policies.ymlは互換用で、現在の標準でもcallback制限はONです。
 
 | cop | 防ぎたい事故 | 直すときの注意 |
 | --- | --- | --- |
+| TsurakunaiRails/ControllerCallbacks | actionのロード・更新・通知が暗黙の順序へ隠れる（T01） | 認証等の必須hookをAllowedMethodsで許可。認可を消さず対象取得はactionへ |
+| TsurakunaiRails/ModelCallbacks | saveやfindから別の業務が始まる（T02） | AllowedCallbacksで種類と名前を事前許可。本体と全入口を検証 |
+| TsurakunaiRails/ImplicitContext | actor・tenant等の入力がglobalへ隠れる（T03） | Current定数の参照を検出。業務の同名定数はAllowedConstantsで許可 |
+| TsurakunaiRails/Concern | 業務APIがmixinsへ隠れ、配置と依存が散る（T04） | app内のActiveSupport::Concern宣言を検出。必要な基盤・既存契約は対象限定で許可 |
 | TsurakunaiRails/ModelRequestContext | modelがHTTPの暗黙の状態を必要とし、job等から使えない | 同名業務属性は区別できない。AllowedMethodsで許可する |
 | TsurakunaiRails/DefaultScope | 取得・集計・作成の対象が知らずに変わる | 明示的なscopeを使う。正当な利用は対象限定や個別OFFで残せる |
 | TsurakunaiRails/ValidationBypass | validationが動くと思って更新する | 対象はmodel内の明示API。bulkと他レイヤーは文脈で判断 |
@@ -37,15 +41,17 @@ lintの指摘だけでは不具合と断定できません。実際の型、デ�
 | Rails/HasManyOrHasOneDependent | 親の削除時に関連が残る・予期せず消える | destroyを強制せずrestrict、DB側管理、nilなど業務の方針を明示 |
 | Rails/UniqueValidationWithoutIndex | 並行登録で重複が入る | 対応indexを確認。schema.rbなし、条件付きvalidation、部分indexなどは別途レビュー |
 
-### 任意のcallback全面禁止
+### 対象と例外
 
-`TsurakunaiRails/ControllerCallbacks`は標準OFFです。構文だけでは局所的な認証・lifecycle処理と複雑な業務フローを区別できません。全面禁止を選ぶ場合に個別ONまたは旧`config/policies.yml`を使い、必要なhookは`AllowedMethods`で許可します。複雑な実行順序・副作用はレビュースキルで追います。
+ControllerCallbacksはcontrollerのreceiverなし/selfの登録を検出します。AllowedMethodsの全登録名が一致し、ブロックがない場合だけ許可します。ModelCallbacksはmodelのvalidation/save/create/update/destroy/find/initialize/touch/commit/rollback hookとset_callbackを検出します。AllowedCallbacksは登録種類ごとの名前です。ブロック・混合・動的登録・set_callbackは許可名では通しません。`transaction.after_commit`等の別receiverは操作内の明示的登録として対象外ですが、外側transactionとの順序・配信保証はレビューします。
+
+ImplicitContextはmodels/jobs/operations/services/queries/forms/helpers/components内の末尾名Currentの定数参照を検出します。HTTP境界のcontrollerと定数のclass/module宣言は対象外です。CurrentAttributesの型推論はせず、別名・alias・ERB・別配置はレビューします。Concernはmodels/controllers/operations/services内のActiveSupport::Concernへのextend/includeを検出します。普通のmoduleや動的include、ライブラリ内部は検査できません。T04の暗黙APIはレビューで補います。
 
 独自copは自動修正を実装しません。追加した上流copで自動修正を持つものもこのセットでは `AutoCorrect: false` にしています。修正後の仕様・安全性をレビューするためです。方針セットでも自動修正は無効です。`SaveBang`は型を推論せず、代入・引数・暗黙の戻り値などの全経路を保証しないため、永続化の結果を呼び出し元まで追います。
 
 独自のcontrollerルールは`app/controllers/**/*.rb`、modelルールは`app/models/**/*.rb`を対象にします。concernも含みます。別の配置を使う場合は`Include`を上書きしてください。継承関係やreceiverの型は推論せず、同名の独自APIを検出することがあります。動的な`send`、別レイヤー、bulk処理、動的optionsはコードレビューで確認します。
 
-`ModelRequestContext`はmodel内のreceiverなしまたは `self` の `params` / `session` / `cookies` / `flash` / `request` / `response` / `current_user` / `current_account` 呼び出しを対象とします。ローカル変数・引数や別objectの同名APIは対象外です。これらが正当な業務属性なら `AllowedMethods` で名前を許可します。HTTP objectの引数渡しや `Current` への依存などはコードレビューで判断します。
+`ModelRequestContext`はmodel内のreceiverなしまたは `self` の `params` / `session` / `cookies` / `flash` / `request` / `response` / `current_user` / `current_account` 呼び出しを対象とします。ローカル変数・引数や別objectの同名APIは対象外です。これらが正当な業務属性なら `AllowedMethods` で名前を許可します。HTTP objectの引数渡しや別名globalはコードレビューで判断します。Current定数はImplicitContextが補助検出します。
 
 <a id="rspecセット明示導入"></a>
 
@@ -67,7 +73,7 @@ Minitestでも、stubで業務の保証を消さないこと、期待する例�
 
 ## ERB入力セット（明示導入）
 
-[導入手順](view-inputs.md)の設定で、partialの暗黙の入力（TsurakunaiPartialInputs）と解析エラー（ParserErrors）を検査します。対応するRailsでは入力宣言（StrictLocals）も選べます。書式のルールは含めません。Rubyの標準15ルールとは別のERB Lintで実行し、入力の渡し忘れは実際の描画でも検証します。
+[導入手順](view-inputs.md)の設定で、partialの暗黙の入力（TsurakunaiPartialInputs）と解析エラー（ParserErrors）を検査します。対応するRailsでは入力宣言（StrictLocals）も選べます。書式のルールは含めません。Rubyの標準19ルールとは別のERB Lintで実行し、入力の渡し忘れは実際の描画でも検証します。
 
 <a id="意味的レビューの18領域"></a>
 

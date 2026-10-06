@@ -18,7 +18,7 @@ def update
 end
 ```
 
-これは構造の例。`require_login`がredirectするだけならreturnするか例外を使って処理を止める必要がある。実際の認証ライブラリの規約に従う。認証・認可が元と同じ対象の全actionで必ず動くことをrequest testで確認する。ApplicationControllerやconcernのcallbackも追う。認証基盤などで必要なcallbackは標準で許容する。全面禁止を選んだ導入先ではAllowedMethodsで残せる。上の明示呼び出し例は、処理順を追いやすくするために移行を選んだ場合の候補であり、全actionの認証・認可を保つことが前提である。
+これは構造の例。`require_login`がredirectするだけならreturnするか例外を使って処理を止める必要がある。実際の認証ライブラリの規約に従う。認証・認可が元と同じ対象の全actionで必ず動くことをrequest testで確認する。ApplicationControllerやconcernのcallbackも追う。T01では認証基盤などの必要なcallbackを事前にAllowedMethodsで許可する。必要な認証を消さず、業務ロードや更新をactionで見せる。上の明示呼び出し例は、処理順を追いやすくするために移行を選んだ場合の候補であり、全actionの認証・認可を保つことが前提である。
 
 ## validationとDB制約
 
@@ -60,7 +60,7 @@ ValidationBypassは標準ON。個別OFFにしている場合は、この例外�
 | permitに`account_id`や`owner_id`を追加 | 属性の意味、所有権移転の認可、request後のreload。同じ利用者が任意の所属へ移せれば認可の迂回 | 移転を許可しない通常更新ではpermitから外す。認可した移転専用操作は認める |
 | validation失敗後に`reload`・`find`・`new`してrender | 保存戻り値、表示に使うobject、実際のHTML。reloadで入力値がDBの値へ戻る、または別objectへの置換でerrorsが消えて再入力が必要になる | 保存に失敗したobjectをそのまま描画する。成功後のreloadや、意図的な入力破棄は欠陥ではない |
 | validationをcontrollerへ移す・modelから削る | その条件が全入口の不変条件か、job/console等の公開操作とDB制約。requestでは拒否するが直接保存は不正値を受け入れる | modelまたはDBで必要な条件を保つ。画面だけの確認欄をformへ移すのは正当 |
-| collectionや別actionがpartialを使う | `render`のcollection/as/localsとpartial内の変数。異なる2行を描画し、両方に同じ`@invoice`の値が出る | 対象recordのlocalを読む。単一actionの用意済みinstance variableはそのままでよい |
+| collectionや別actionがpartialを使う | `render`のcollection/as/localsとpartial内の変数。異なる2行を描画し、両方に同じ`@invoice`の値が出る | 対象recordのlocalを読む。単一actionのpartialもT07のlocalsへ揃える。トップレベルviewの用意済みinstance variableは可 |
 
 指摘は例えば「他accountのinvoice IDを送ると200となりmemoが変更される。account内のinvoiceだけを更新する契約に反する。取得を`current_account.invoices.find`に戻し、他accountのIDでは404か403でDBが変わらないことを既存request testで確認する」のように書きます。単に「controllerが太い」「認可が見当たらない」では終えません。
 

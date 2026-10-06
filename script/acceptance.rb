@@ -21,7 +21,7 @@ cases = [
    "test_validation_failure_preserves_input_errors_and_database", []],
   ["commit_hook", "app/models/invoice.rb",
    "after_save_commit :record_notification", "after_create_commit :record_notification\n  after_update_commit :record_notification",
-   "test_model_operation_works_without_a_request_and_notifies_on_both_events", ["Rails/AfterCommitOverride"]],
+   "test_model_operation_works_without_a_request_and_notifies_on_both_events", ["Rails/AfterCommitOverride", "TsurakunaiRails/ModelCallbacks"]],
   ["partial_object", "app/views/invoices/_invoice.html.erb",
    "invoice.memo", "@invoice.memo",
    "test_collection_renders_each_object_without_leaking_other_tenants_or_mutating_data", []],
@@ -53,6 +53,14 @@ Dir.mktmpdir("tsurakunai-acceptance-") do |project|
       Enabled: false
     Naming:
       Enabled: false
+    # Existing framework authentication is an approved team hook.
+    TsurakunaiRails/ControllerCallbacks:
+      AllowedMethods: [authenticate_account!]
+    # Legacy notification contract, in this isolated one-model fixture only.
+    # Actual applications should scope approval or migrate to explicit operations.
+    TsurakunaiRails/ModelCallbacks:
+      AllowedCallbacks:
+        after_save_commit: [record_notification]
   YAML
   stdout, stderr, status = Open3.capture3(env, *command, "check", "--", RbConfig.ruby, "verify.rb", chdir: project)
   raise "Healthy consumer failed:\n#{stdout}\n#{stderr}" unless status.success? && stdout.include?("6 runs, 40 assertions, 0 failures, 0 errors")

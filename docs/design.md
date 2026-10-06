@@ -2,13 +2,13 @@
 
 ## 機械と文脈の境界
 
-「決定的に構文から判定できるか」をRuboCopとスキルの境界にする。RuboCopは違反構文の検出を保証する。業務上の安全性や設計の正しさを保証するものではない。スキルは根拠と失敗シナリオを追い、実際のテストで保証を補う。
+「決定的に構文から判定できるか」をRuboCopとスキルの境界にする。RuboCopは設定した対象パスの該当構文を検出する。業務上の安全性や設計の正しさを保証するものではない。スキルは根拠と失敗シナリオを追い、実際のテストで保証を補う。
 
-主軸は実装手順とレビュー手順を分け、[共通の設計判断](../skills/tsurakunai-rails/references/daily-design.md)を共有すること。GitLabと37signalsの実コード・一次資料から、domain APIと必要な協力オブジェクトを使い分ける。各社の全体構造をそのまま輸入しない。
+主軸は[趣旨](purpose.md)と[チーム規約T01〜T09](../skills/tsurakunai-rails/references/team-policy.md)を固定し、実装とレビューの判断を揃えること。各社の実装・一次資料は背景として読み、本パッケージでの採用判断を分ける。現行ルール・スキル、あるべき姿、差分は[改善フロー](improvement.md)へ記録する。
 
 実装は入口・状態・保存失敗・取得/表示・テストを作る。レビューは別入口の迂回、部分commit、隠れた副作用、過剰な抽象化などを具体的に追う。設計上の指摘は保守負担、不具合の指摘は発生条件と影響を示す。
 
-機械検査は設計7 cop、事故防止8 cop、RSpec7 copが標準ON。callback全面禁止だけは文脈で区別できないので標準OFFとし、旧厳格presetを残す。ERB利用アプリは設定と依存を導入し、`--views`付きで検査する。POROやcomponentの有無をhardな合否にしない。
+機械検査は設計11 cop、事故防止8 cop、RSpec7 copが標準ON。動くコードにも適用する制限を規約として定め、callback・Current・Concernの該当構文を拒否する。必要なhookは名前・対象・代替保証で事前許可する。ERBは別設定と依存を導入して検査する。POROやcomponentの有無、行数だけで合否を決めない。
 
 ## ルールを追加する条件
 
@@ -30,11 +30,13 @@ CLIの導入テストでは、両クライアントへ3つのskillと共通参�
 | ケース | 期待する判断 |
 | --- | --- |
 | controller callbackを消し、認証を呼び忘れる | 未認証の更新経路を根拠付きで指摘する |
-| 認証・ロードのcallbackで契約を満たす | 標準では許容し、全面禁止の採用時だけ許可名を案内する |
+| 認証hookが事前許可され、契約を満たす | 維持する。認証を削除・二重実行しない |
+| 動作している対象ロード・業務更新callback | T01/T02の規約違反と標準の修正先を示す |
 | uniqueness validationだけで競合を防ぐ | schemaのindexと衝突時の挙動を確認する |
 | DB制約と冪等処理があるbulk update | 個別updateへの機械的変換を要求しない |
 | rollback前に外部課金する | rollbackと二重実行時の失敗を説明する |
-| 単一actionのpartialが用意済みのinstance variableを読む | locals化やstrict locals導入を要求しない |
+| 単一actionのpartialが用意済みのinstance variableを読む | T07としてlocalsへ。トップレベルviewは対象外 |
+| 新しいConcernやmodel/jobのCurrent | T03/T04として明示入力と協力objectへ |
 | modelのrequest属性はHTTPとは無関係 | 名前だけで設計違反と指摘しない |
 | 複数入口でpartialの表示対象が食い違う | 具体的なrenderと出力を根拠に修正を検討する |
 | 取引のない表示変更 | outboxや新しいサービス層を要求しない |
