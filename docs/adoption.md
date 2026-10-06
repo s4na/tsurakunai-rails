@@ -4,7 +4,7 @@
 
 ## 既存契約を保って始める
 
-1. [導入手順](installation.md)でGem、3スキル、`init-policy`の規約と設定を配置します。既存ファイルは保全し、生成した設定を既存.rubocop.ymlへinheritします。
+1. [導入手順](installation.md)でGem、`init-policy`の規約と設定、`install-rules`のAIルール、3スキルを導入します。Codexの共通ルールは実際に有効な指示へ手動で統合します。既存ファイルは保全し、生成した設定を既存.rubocop.ymlへinheritします。
 2. controllerの基盤hookを列挙します。認証等で必要な名前をAllowedMethodsへ登録し、RAILS_TEAM_POLICY.mdに対象・理由・未認証拒否の保証を残します。承認済みhookをactionから呼び直して二重実行しません。
 3. 既存model callback/Concern/Current/partialの暗黙入力を棚卸しします。保存・通知等の契約と呼び出し元を確認し、既存機能を保持したまま今回の変更対象から標準へ寄せます。未移行範囲は理由付きの狭いExclude・行単位disable等で残します。全体OFFにして新規利用まで自由にしない方針を規約へ明記します。
 4. lintの実効設定、実リクエスト・保存・描画を確認し、規約と許可設定を同じ変更でレビューします。
@@ -35,7 +35,7 @@ TsurakunaiRails/ModelCallbacks:
 
 ## バージョン更新
 
-旧スキル名は互換入口として維持します。Gem同梱の3フォルダを一組で比較し、ローカル変更を保全して更新します。既存フォルダが一つでもあるとinstallerは上書きしません。RAILS_TEAM_POLICY.mdと生成した設定も、新しい標準との差分を確認します。既存の明示OFF・許可名は勝手に消しません。
+旧スキル名は互換入口として維持します。Gem同梱の3フォルダを一組で比較し、ローカル変更を保全して更新します。既存フォルダが一つでもあるとinstallerは上書きしません。RAILS_TEAM_POLICY.md、生成した設定、AIの有効な指示へ配置・統合した共通ルールも、新しい標準との差分を確認します。既存の明示OFF・許可名は勝手に消しません。
 
 旧config/policies.ymlは互換用に残します。ControllerCallbacksを明示OFFにした設定は新しい標準へ自動復帰しません。文書の採用方針と実効lintが違う場合は、それを見えるようにしてチームで調整します。
 

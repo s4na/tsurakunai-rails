@@ -42,6 +42,178 @@ RSpec.describe Tsurakunai::Rails::CLI do
     end
   end
 
+  %w[claude].each do |target|
+    it "installs #{target} project rules pointing to the team's unchanged policy" do
+      Dir.mktmpdir do |project|
+        File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team-approved policy")
+        File.write(File.join(project, "CLAUDE.md"), "existing Claude instructions")
+        stdout, stderr, status = cli("install-rules", "--target", target, "--project", project)
+        expect(status.success?).to be(true), stderr
+        relative = ".claude/rules/tsurakunai-rails.md"
+        expect(stdout).to include(File.join(project, relative))
+        expect(File.read(File.join(project, relative))).to eq(File.read(File.expand_path("../config/agent_rules.md", __dir__)))
+        expect(File.read(File.join(project, "RAILS_TEAM_POLICY.md"))).to eq("team-approved policy")
+        expect(File.read(File.join(project, "CLAUDE.md"))).to eq("existing Claude instructions")
+      end
+    end
+
+    it "preserves existing #{target} rules and refuses reinstallation" do
+      Dir.mktmpdir do |project|
+        File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
+        relative = ".claude/rules/tsurakunai-rails.md"
+        destination = File.join(project, relative)
+        FileUtils.mkdir_p(File.dirname(destination))
+        File.write(destination, "existing team rules")
+        _, stderr, status = cli("install-rules", "--target", target, "--project", project)
+        expect(status.exitstatus).to eq(2)
+        expect(stderr).to include("Already exists", "merge")
+        expect(File.read(destination)).to eq("existing team rules")
+      end
+    end
+
+    it "preserves a broken symlink at the #{target} rule destination" do
+      Dir.mktmpdir do |project|
+        File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
+        relative = ".claude/rules/tsurakunai-rails.md"
+        destination = File.join(project, relative)
+        FileUtils.mkdir_p(File.dirname(destination))
+        File.symlink("missing-rule", destination)
+        _, stderr, status = cli("install-rules", "--target", target, "--project", project)
+        expect(status.exitstatus).to eq(2)
+        expect(stderr).to include("Already exists")
+        expect(File.readlink(destination)).to eq("missing-rule")
+        expect(File).not_to exist(File.join(File.dirname(destination), "missing-rule"))
+      end
+    end
+  end
+
+  %w[fresh existing].each do |state|
+    it "prints Codex rules for manual integration in a #{state} project without selecting instruction files" do
+      Dir.mktmpdir do |project|
+        File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
+        if state == "existing"
+          %w[AGENTS.md AGENTS.override.md TEAM_GUIDE.md].each do |name|
+            File.write(File.join(project, name), "existing #{name}")
+          end
+        end
+        before = Dir.children(project).to_h { |name| [name, File.read(File.join(project, name))] }
+        stdout, stderr, status = cli("install-rules", "--target", "codex", "--project", project)
+        expect(status.success?).to be(true), stderr
+        expect(stdout).to eq(File.read(File.expand_path("../config/agent_rules.md", __dir__)))
+        expect(stderr).to include("Manual integration required", "active project instructions")
+        expect(Dir.children(project).to_h { |name| [name, File.read(File.join(project, name))] }).to eq(before)
+      end
+    end
+  end
+
+  it "requires a policy and valid arguments before writing project rules" do
+    Dir.mktmpdir do |project|
+      %w[codex claude].each do |target|
+        _, stderr, status = cli("install-rules", "--target", target, "--project", project)
+        expect(status.exitstatus).to eq(2)
+        expect(stderr).to include("Missing RAILS_TEAM_POLICY.md")
+      end
+      [[], ["--target", "unknown"], ["--target", "codex", "extra"]].each do |flags|
+        _, _, status = cli("install-rules", *flags, "--project", project)
+        expect(status.exitstatus).to eq(2)
+      end
+      expect(Dir.children(project)).to be_empty
+    end
+  end
+
+  it "does not install ignored Codex guidance when AGENTS.override.md takes precedence" do
+    Dir.mktmpdir do |project|
+      File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
+      File.write(File.join(project, "AGENTS.override.md"), "active team instructions")
+      _, stderr, status = cli("install-rules", "--target", "codex", "--project", project)
+      expect(status.success?).to be(true), stderr
+      expect(stderr).to include("Manual integration required")
+      expect(File).not_to exist(File.join(project, "AGENTS.md"))
+      expect(File.read(File.join(project, "AGENTS.override.md"))).to eq("active team instructions")
+    end
+  end
+
+  it "does not displace fallback instructions configured in CODEX_HOME" do
+    Dir.mktmpdir do |project|
+      Dir.mktmpdir do |codex_home|
+        File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
+        File.write(File.join(project, "TEAM_GUIDE.md"), "active team guidance")
+        configuration = 'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]'
+        File.write(File.join(codex_home, "config.toml"), configuration)
+        _, stderr, status = cli("install-rules", "--target", "codex", "--project", project,
+                                env: { "CODEX_HOME" => codex_home })
+        expect(status.success?).to be(true), stderr
+        expect(stderr).to include("fallback", "merge")
+        expect(File).not_to exist(File.join(project, "AGENTS.md"))
+        expect(File.read(File.join(project, "TEAM_GUIDE.md"))).to eq("active team guidance")
+        expect(File.read(File.join(codex_home, "config.toml"))).to eq(configuration)
+      end
+    end
+  end
+
+  %w[project ancestor profile system managed].each do |layer|
+    it "preserves custom instruction discovery from a #{layer} config layer" do
+      Dir.mktmpdir do |workspace|
+        project = File.join(workspace, "app")
+        codex_home = File.join(workspace, "codex-home")
+        config = case layer
+                 when "project" then File.join(project, ".codex", "config.toml")
+                 when "ancestor" then File.join(workspace, ".codex", "config.toml")
+                 when "managed" then File.join(codex_home, "managed_config.toml")
+                 when "system" then File.join(workspace, "system", "OpenAI", "Codex", "config.toml")
+                 else File.join(codex_home, "work.config.toml")
+                 end
+        FileUtils.mkdir_p([project, File.dirname(config)])
+        File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
+        File.write(File.join(project, ".agents.md"), "custom team rules")
+        File.write(config, %('project_doc_fallback_filenames' = [\n  ".agents.md"\n]\n))
+        _, stderr, status = cli("install-rules", "--target", "codex", "--project", project,
+                                env: { "CODEX_HOME" => codex_home, "ProgramData" => File.join(workspace, "system") })
+        expect(status.success?).to be(true), stderr
+        expect(stderr).to include("fallback", "merge")
+        expect(File).not_to exist(File.join(project, "AGENTS.md"))
+        expect(File.read(File.join(project, ".agents.md"))).to eq("custom team rules")
+      end
+    end
+  end
+
+  it "allows ordinary Codex settings without changing them or blocking Claude rules" do
+    Dir.mktmpdir do |project|
+      Dir.mktmpdir do |codex_home|
+        File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
+        config = File.join(codex_home, "config.toml")
+        File.write(config, 'model = "team-model"')
+        _, stderr, status = cli("install-rules", "--target", "codex", "--project", project,
+                                env: { "CODEX_HOME" => codex_home })
+        expect(status.success?).to be(true), stderr
+        expect(File.read(config)).to eq('model = "team-model"')
+        File.write(config, 'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]')
+        _, stderr, status = cli("install-rules", "--target", "claude", "--project", project,
+                                env: { "CODEX_HOME" => codex_home })
+        expect(status.success?).to be(true), stderr
+        expect(File).to exist(File.join(project, ".claude", "rules", "tsurakunai-rails.md"))
+      end
+    end
+  end
+
+  %w[.claude .claude/rules].each do |directory|
+    it "does not write rules through a shared #{directory} symlink" do
+      Dir.mktmpdir do |project|
+        Dir.mktmpdir do |shared|
+          File.write(File.join(project, "RAILS_TEAM_POLICY.md"), "team policy")
+          destination = File.join(project, directory)
+          FileUtils.mkdir_p(File.dirname(destination))
+          File.symlink(shared, destination)
+          _, stderr, status = cli("install-rules", "--target", "claude", "--project", project)
+          expect(status.exitstatus).to eq(2)
+          expect(stderr).to include("symlinked instruction directory")
+          expect(Dir.children(shared)).to be_empty
+          expect(File.readlink(destination)).to eq(shared)
+        end
+      end
+    end
+  end
+
   %w[codex claude].each do |target|
     it "installs the complete #{target} skill and refuses replacement" do
       Dir.mktmpdir do |project|

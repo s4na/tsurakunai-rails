@@ -16,10 +16,12 @@
 
 ## 導入する
 
-Gemとスキルの[導入手順](docs/installation.md)に従い、チームの規約と設定を生成します。
+Gem・ルール・スキルの[導入手順](docs/installation.md)に従い、チームの規約と設定を生成します。
 
 ```sh
 bundle exec tsurakunai-rails init-policy
+bundle exec tsurakunai-rails install-rules --target codex
+# 表示した共通ルールを、有効なプロジェクト指示へ手動で統合する。
 bundle exec tsurakunai-rails install-skill --target codex
 # Claude Codeを使う場合は --target claude
 ```
@@ -32,13 +34,17 @@ bundle exec tsurakunai-rails check -- bin/rails test
 # ERBを使う場合: install-view-lint後に check --views -- ...
 ```
 
+`install-rules`は同じ規約を読む[共通ルール](config/agent_rules.md)を提供します。Codexは表示したルールを有効なプロジェクト指示へ手動で統合し、Claude Codeは`.claude/rules/tsurakunai-rails.md`へ配置します。既存の指示を保全する[手順と読み込み確認](docs/installation.md#aiが常時読むルールを配置する)も行います。
+
 ## 実装とレビューを同じ基準にする
 
-- [tsurakunai-rails-implement](skills/tsurakunai-rails-implement/SKILL.md): T01〜T09から置き場所・入口・失敗・公開結果のテストを作ります。
-- [tsurakunai-rails-review](skills/tsurakunai-rails-review/SKILL.md): 規約違反と具体的な不具合を分け、同じIDで根拠と修正先を示します。
+- [tsurakunai-rails-implement](skills/tsurakunai-rails-implement/SKILL.md): T01〜T09の必須条件を実装し、禁止形を避け、両方を検証します。
+- [tsurakunai-rails-review](skills/tsurakunai-rails-review/SKILL.md): 必須条件の欠落と禁止形の使用を同じIDで検査し、具体的な不具合とは分けて根拠と修正先を示します。
 - [tsurakunai-rails](skills/tsurakunai-rails/SKILL.md): 既存名の互換入口です。
 
 Codexでは `$tsurakunai-rails-implement` / `$tsurakunai-rails-review`、Claude Codeでは `/` を使います。導入先の明示規約を優先し、lintを通すための勝手なOFF・許可追加はしません。
+
+ルールも両スキルも「どうあるべきか」と「どうでないべきか」で拘束します。**禁止に触れないことと、必要な形・契約があることの両方が合格条件です。** [ルールとスキルの対応](docs/rules.md) · [lintが通っても不合格になる対例](skills/tsurakunai-rails/references/team-policy.md#禁止構文がなくても合格にしない例)
 
 ## 自動検査の範囲
 
